@@ -724,19 +724,29 @@ EepromTab::decompile_done(bool ok, int size, const std::string &errors)
 
 GpioTab::GpioTab(MainWindow *parent, const Device &dev):
     Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL),
-    m_gpio0_row("GPIO 0"),
-    m_gpio1_row("GPIO 1"),
-    m_gpio2_row("GPIO 2"),
-    m_gpio3_row("GPIO 3"),
-    m_device(dev)
+    m_device(dev),
+    m_gpio_row {
+	FormRowGpio("GPIO 0"),
+	FormRowGpio("GPIO 1"),
+	FormRowGpio("GPIO 2"),
+	FormRowGpio("GPIO 3")
+    }
 {
 	set_border_width(10);
+
+	for (int i = 0; i < 4; i++) {
+		m_gpio_row[i].direction_changed().connect(sigc::bind(sigc::mem_fun(*this, &GpioTab::direction_changed), 1 << i));
+		m_gpio_row[i].state_changed().connect(sigc::bind(sigc::mem_fun(*this, &GpioTab::state_changed), 1 << i));
+
+	}
+
+#if 0
 	m_gpio0_row.get_widget().set_label("off");
 	m_gpio1_row.get_widget().set_label("off");
 	m_gpio2_row.get_widget().set_label("off");
 	m_gpio3_row.get_widget().set_label("off");
 
-	m_gpio0_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
+
 	m_gpio1_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
 	m_gpio2_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
 	m_gpio3_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
@@ -753,28 +763,38 @@ GpioTab::GpioTab(MainWindow *parent, const Device &dev):
 	m_gpio2_row.get_widget().signal_toggled().connect(sigc::mem_fun(*this, &GpioTab::button_clicked));
 	m_gpio3_row.get_widget().signal_toggled().connect(sigc::mem_fun(*this, &GpioTab::button_clicked));
 
-	m_gpio0_row.get_widget().set_sensitive(0);
-	m_gpio1_row.get_widget().set_sensitive(0);
-	m_gpio2_row.get_widget().set_sensitive(0);
-	m_gpio3_row.get_widget().set_sensitive(0);
+	m_gpio0_row.get_widget().set_sensitive(false);
+	m_gpio1_row.get_widget().set_sensitive(false);
+	m_gpio2_row.get_widget().set_sensitive(false);
+	m_gpio3_row.get_widget().set_sensitive(false);
 
 	pack_start(m_gpio0_row, false, true);
 	pack_start(m_gpio1_row, false, true);
 	pack_start(m_gpio2_row, false, true);
 	pack_start(m_gpio3_row, false, true);
+#endif
 
-	/* set up timer for controlling all the input gpios */
-	sigc::slot<bool> my_slot = sigc::bind(sigc::mem_fun(*this, &GpioTab::on_timeout), reference);
-	sigc::connection conn = Glib::signal_timeout().connect(my_slot, 100);
+	//m_timer = Glib::signal_timeout().connect(sigc::mem_fun(*this, &GpioTab::on_timeout), 500);
 }
 
+GpioTab::~GpioTab() noexcept
+{
+	m_timer.disconnect();
+}
 
 /* on/off button clicked */
 void
-GpioTab::button_clicked()
+GpioTab::state_changed(bool state, uint8_t mask)
 {
 	uint8_t val;
 
+	val = state
+	    ? m_gpio->get() | mask
+	    : m_gpio->get() & ~mask;
+
+	m_gpio->set(val);
+
+#if 0
 	if (m_gpio->io_state & (1 << 0)) {
 		if (m_gpio0_row.get_widget().get_active()) {
 			m_gpio0_row.get_widget().set_label("on");
@@ -827,16 +847,22 @@ GpioTab::button_clicked()
 	val = m_gpio->io_value & m_gpio->io_state;
 
 	m_gpio->set(val);
+#endif
 }
 
 /* radio button for selection input or output clicked */
 void
-GpioTab::radio_clicked()
+GpioTab::direction_changed(bool output, uint8_t mask)
 {
 	uint8_t val;
 
-	m_gpio->io_state = 0;
-	
+	val = state
+	      ? m_gpio->get_direction() | mask
+	      : m_gpio->get_direction() & ~mask;
+
+	m_gpio->configure(val);
+
+#if 0
 	/* check radiobutton0 state - if it is input or output */
 	if (m_gpio0_row.m_radio_out.get_active()) {
 		m_gpio->io_state |= 1 << 0;			/* set as output */
@@ -874,102 +900,22 @@ GpioTab::radio_clicked()
 	m_gpio1_row.get_widget().set_sensitive(m_gpio->io_state & (1 << 1));
 	m_gpio2_row.get_widget().set_sensitive(m_gpio->io_state & (1 << 2));
 	m_gpio3_row.get_widget().set_sensitive(m_gpio->io_state & (1 << 3));
+#endif
 }
 
 bool
 GpioTab::on_timeout(int param)
 {
-	unsigned char rxbuf[16];
-	int st;
 
-
-	if (m_gpio == NULL) 
+	if (m_gpio == nullptr)
 		return true;
 
-	/* read all the GPIO pins */
-	st = m_gpio->m_context.read_pins(rxbuf);
-	if (st != 0) {
-		printf("fail to read st: %d\n", st);
-	}
-
-	if (!!(m_gpio->io_state & (1 << 0)) == 0) { /* check if bit0 is configured as input */
-		if (rxbuf[0] & (1 << 0)) {
-			m_gpio0_row.get_widget().set_label("on");
-		} else  {
-			m_gpio0_row.get_widget().set_label("off");
-		}
-	}
-
-	if (!!(m_gpio->io_state & (1 << 1)) == 0) {
-		if (rxbuf[0] & (1 << 1)) {
-			m_gpio1_row.get_widget().set_label("on");
-		} else {
-			m_gpio1_row.get_widget().set_label("off");
-		}
-	}
-
-	if (!!(m_gpio->io_state & (1 << 2)) == 0) {
-		if (rxbuf[0] & (1 << 2)) {
-			m_gpio2_row.get_widget().set_label("on");
-		} else {
-			m_gpio2_row.get_widget().set_label("off");
-		}
-	}
-
-	if (!!(m_gpio->io_state & (1 << 3)) == 0) {
-		if (rxbuf[0] & (1 << 3)) {
-			m_gpio3_row.get_widget().set_label("on");
-		} else {
-			m_gpio3_row.get_widget().set_label("off");
-		}
-	}
-
-	/* set red/green GPIO level state indicators */
-	if (rxbuf[0] & (1 << 0)) {
-		m_gpio0_row.image.set_from_icon_name("gtk-yes", Gtk::ICON_SIZE_BUTTON);
-	} else  {
-		m_gpio0_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
-	}
-
-	if (rxbuf[0] & (1 << 1)) {
-		m_gpio1_row.image.set_from_icon_name("gtk-yes", Gtk::ICON_SIZE_BUTTON);
-	} else {
-		m_gpio1_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
-	}
-
-	if (rxbuf[0] & (1 << 2)) {
-		m_gpio2_row.image.set_from_icon_name("gtk-yes", Gtk::ICON_SIZE_BUTTON);
-	} else {
-		m_gpio2_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
-	}
-
-	if (rxbuf[0] & (1 << 3)) {
-		m_gpio3_row.image.set_from_icon_name("gtk-yes", Gtk::ICON_SIZE_BUTTON);
-	} else {
-		m_gpio3_row.image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
-	}
-
-	return true;
 }
 
 void
-GpioTab::set_gpio_name(int no, std::string name)
+GpioTab::set_gpio_name(int no, const std::string &name)
 {
-	if (no == 0) {
-		m_gpio0_row.set_gpio_name(name);
-	}
 
-	if (no == 1) {
-		m_gpio1_row.set_gpio_name(name);
-	}
-
-	if (no == 2) {
-		m_gpio2_row.set_gpio_name(name);
-	}
-
-	if (no == 3) {
-		m_gpio3_row.set_gpio_name(name);
-	}
 }
 
 void MainWindow::set_uart_addr(std::string addr)

@@ -34,9 +34,6 @@
 
 Gpio::Gpio(const Device &device)
 {
-	/* set all the GPIO to input - clear all the bits */
-	io_state = 0x00;
-
 	m_context.set_interface(INTERFACE_D);
 
 	if (m_context.open(device.vid, device.pid, device.description,
@@ -46,12 +43,18 @@ Gpio::Gpio(const Device &device)
 		    m_context.error_string()));
 	}
 
-	configure();
+	configure(0u);
 }
 
 Gpio::~Gpio()
 {
 	m_context.close();
+}
+
+uint8_t
+Gpio::get_direction()
+{
+	return (m_bitmode);
 }
 
 uint8_t
@@ -69,14 +72,15 @@ Gpio::set(uint8_t mask)
 	m_context.write(&mask, 1);
 }
 
-
 void
-Gpio::configure()
+Gpio::configure(uint8_t direction_mask)
 {
 	if (m_context.set_bitmode(0xff, BITMODE_RESET) != 0)
+		throw std::runtime_error("Failed to reset bitmode");
+
+	if (m_context.set_bitmode(direction_mask, BITMODE_BITBANG) != 0)
 		throw std::runtime_error("Failed to set bitmode");
 
-	if (m_context.set_bitmode(io_state, BITMODE_BITBANG) != 0)
-		throw std::runtime_error("Failed to set bitmode");
+	m_bitmode = direction_mask;
 }
 

@@ -39,16 +39,14 @@ public:
 	Gpio(const Device &device);
 	virtual ~Gpio();
 
+	uint8_t get_direction();
 	uint8_t get();
 	void set(uint8_t mask);
-	void configure();
-	uint8_t io_state;		/* 0-input, 1-output */
-	uint8_t io_value;		/* 0-low, 1-high */
-	Ftdi::Context m_context;
+	void configure(uint8_t direction_mask);
 
 protected:
-	bool on_timeout(int costam);
-	int reference;
+	Ftdi::Context m_context;
+	uint8_t m_bitmode;
 };
 
-#endif //DEVCLIENT_GPIO_HH
+#endif /* DEVCLIENT_GPIO_HH */

@@ -178,28 +178,22 @@ class GpioTab: public Gtk::Box
 {
 public:
 	GpioTab(MainWindow *parent, const Device &dev);
+	virtual ~GpioTab() noexcept;
 	std::shared_ptr<Gpio> m_gpio;
 
-	void set_gpio_name(int no, std::string name);
+	void set_gpio_name(int no, const std::string &name);
 	
 protected:
-	void button_clicked();
+	void state_changed(bool state, uint8_t mask);
+	void direction_changed(bool state, uint8_t mask);
 
-	Gtk::HBox m_h;
-	Gtk::RadioButton m_radio1;
-	Gtk::RadioButton m_radio2;
-	Gtk::RadioButton m_radio3;
-	Gtk::Separator m_sep;
-	FormRowGpio<Gtk::ToggleButton> m_gpio0_row;
-	FormRowGpio<Gtk::ToggleButton> m_gpio1_row;
-	FormRowGpio<Gtk::ToggleButton> m_gpio2_row;
-	FormRowGpio<Gtk::ToggleButton> m_gpio3_row;
 	uint8_t state;
 	MainWindow *m_parent;
 	const Device &m_device;
+	FormRowGpio m_gpio_row[4];
+	sigc::connection m_timer;
 	void radio_clicked();
 	bool on_timeout(int costam);
-	int reference;
 };
 
 class MainWindow: public Gtk::Window

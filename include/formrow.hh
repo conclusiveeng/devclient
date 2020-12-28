@@ -35,7 +35,7 @@ template <class T>
 class FormRow: public Gtk::Box
 {
 public:
-	FormRow(const Glib::ustring &label):
+	explicit FormRow(const Glib::ustring &label):
 	    Gtk::Box(Gtk::Orientation::ORIENTATION_HORIZONTAL, 10),
 	    m_label(label)
 	{
@@ -56,18 +56,10 @@ protected:
 	Gtk::Label m_label;
 };
 
-
-
-
-template <class T>
 class FormRowGpio: public Gtk::Box
 {
 public:
-	Gtk::RadioButton m_radio_in;
-	Gtk::RadioButton m_radio_out;
-	Gtk::Image image;
-
-	FormRowGpio(const Glib::ustring &label):
+	explicit FormRowGpio(const Glib::ustring &label):
 	    Gtk::Box(Gtk::Orientation::ORIENTATION_HORIZONTAL, 10),
 	    m_label(label)
 	{
@@ -80,26 +72,55 @@ public:
 
 		pack_start(m_radio_in, true, true);
 		pack_start(m_radio_out, true, true);
-		pack_start(m_widget, true, true);
+		pack_start(m_toggle, true, true);
 		pack_start(image, false, false);
 		show_all_children();
 	}
 
-	T &get_widget()
+	bool get_direction()
 	{
-		return (m_widget);
+
 	}
 
-	void set_gpio_name(std::string name)
+	void set_direction(bool output)
+	{
+		m_direction_changed.emit(output);
+	}
+
+	bool get_state()
+	{
+		return (m_toggle.get_active());
+	}
+
+	void set_state(bool state)
+	{
+		m_toggle.set_active(state);
+		m_state_changed.emit(state);
+	}
+
+	void set_gpio_name(const std::string &name)
 	{
 		m_label.set_label(name);
-		
 	}
-	
-	
+
+	sigc::signal<void(bool)> direction_changed()
+	{
+		return m_direction_changed;
+	}
+
+	sigc::signal<void(bool)> state_changed()
+	{
+		return m_state_changed;
+	}
+
 protected:
-	T m_widget;
+	Gtk::ToggleButton m_toggle;
+	Gtk::RadioButton m_radio_in;
+	Gtk::RadioButton m_radio_out;
+	Gtk::Image image;
 	Gtk::Label m_label;
+	sigc::signal<void(bool)> m_direction_changed;
+	sigc::signal<void(bool)> m_state_changed;
 
 	void clicked();
 };
