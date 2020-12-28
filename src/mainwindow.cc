@@ -735,8 +735,10 @@ GpioTab::GpioTab(MainWindow *parent, const Device &dev):
 	set_border_width(10);
 
 	for (int i = 0; i < 4; i++) {
-		m_gpio_row[i].direction_changed().connect(sigc::bind(sigc::mem_fun(*this, &GpioTab::direction_changed), 1 << i));
-		m_gpio_row[i].state_changed().connect(sigc::bind(sigc::mem_fun(*this, &GpioTab::state_changed), 1 << i));
+		m_gpio_row[i].direction_changed().connect(sigc::bind(sigc::mem_fun(
+		    *this, &GpioTab::direction_changed), 1 << i));
+		m_gpio_row[i].state_changed().connect(sigc::bind(sigc::mem_fun(
+		    *this, &GpioTab::state_changed), 1 << i));
 		pack_start(m_gpio_row[i], false, true);
 	}
 
@@ -748,7 +750,6 @@ GpioTab::~GpioTab() noexcept
 	m_timer.disconnect();
 }
 
-/* on/off button clicked */
 void
 GpioTab::state_changed(bool state, uint8_t mask)
 {
