@@ -187,13 +187,11 @@ protected:
 	void state_changed(bool state, uint8_t mask);
 	void direction_changed(bool state, uint8_t mask);
 
-	uint8_t state;
 	MainWindow *m_parent;
 	const Device &m_device;
 	FormRowGpio m_gpio_row[4];
 	sigc::connection m_timer;
-	void radio_clicked();
-	bool on_timeout(int costam);
+	bool timer();
 };
 
 class MainWindow: public Gtk::Window
