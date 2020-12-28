@@ -61,6 +61,8 @@ class FormRowGpio: public Gtk::Box
 public:
 	explicit FormRowGpio(const Glib::ustring &label):
 	    Gtk::Box(Gtk::Orientation::ORIENTATION_HORIZONTAL, 10),
+	    m_toggle("off"),
+	    m_image("gtk-no", Gtk::ICON_SIZE_BUTTON),
 	    m_label(label)
 	{
 		m_label.set_justify(Gtk::Justification::JUSTIFY_LEFT);
@@ -69,21 +71,58 @@ public:
 		m_radio_in.set_label("input");
 		m_radio_out.set_label("output");
 		m_radio_out.join_group(m_radio_in);
+		m_toggle.set_sensitive(false);
+		m_image.set_sensitive(false);
 
 		pack_start(m_radio_in, true, true);
 		pack_start(m_radio_out, true, true);
 		pack_start(m_toggle, true, true);
-		pack_start(image, false, false);
+		pack_start(m_image, false, false);
+
+		m_toggle.signal_toggled().connect(sigc::mem_fun(*this, &FormRowGpio::toggled));
+		m_radio_in.signal_toggled().connect(sigc::mem_fun(*this, &FormRowGpio::in_toggled));
+		m_radio_out.signal_toggled().connect(sigc::mem_fun(*this, &FormRowGpio::out_toggled));
 		show_all_children();
+	}
+
+	void toggled()
+	{
+		bool active = m_toggle.get_active();
+
+		if (active) {
+			m_state_changed.emit(true);
+			m_toggle.set_label("on");
+			m_image.set_from_icon_name("gtk-yes", Gtk::ICON_SIZE_BUTTON);
+		} else {
+			m_state_changed.emit(false);
+			m_toggle.set_label("off");
+			m_image.set_from_icon_name("gtk-no", Gtk::ICON_SIZE_BUTTON);
+		}
+	}
+
+	void in_toggled()
+	{
+		m_toggle.set_sensitive(false);
+		m_image.set_sensitive(false);
+		m_direction_changed.emit(false);
+	}
+
+	void out_toggled()
+	{
+		m_toggle.set_sensitive(true);
+		m_image.set_sensitive(true);
+		m_direction_changed.emit(true);
 	}
 
 	bool get_direction()
 	{
-
+		return (m_radio_out.get_active());
 	}
 
 	void set_direction(bool output)
 	{
+		m_radio_in.set_active(!output);
+		m_radio_out.set_active(output);
 		m_direction_changed.emit(output);
 	}
 
@@ -117,12 +156,10 @@ protected:
 	Gtk::ToggleButton m_toggle;
 	Gtk::RadioButton m_radio_in;
 	Gtk::RadioButton m_radio_out;
-	Gtk::Image image;
+	Gtk::Image m_image;
 	Gtk::Label m_label;
 	sigc::signal<void(bool)> m_direction_changed;
 	sigc::signal<void(bool)> m_state_changed;
-
-	void clicked();
 };
 
 
