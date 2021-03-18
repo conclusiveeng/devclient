@@ -62,7 +62,7 @@ Gpio::get()
 {
 	uint8_t rd;
 
-	m_context.read(&rd, 1);
+	m_context.read_pins(&rd);
 	return (rd);
 }
 
@@ -83,4 +83,3 @@ Gpio::configure(uint8_t direction_mask)
 
 	m_bitmode = direction_mask;
 }
-

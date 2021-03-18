@@ -65,9 +65,9 @@ MainWindow::MainWindow():
 	m_notebook.append_page(m_eeprom_tab, "EEPROM");
 	m_notebook.append_page(m_gpio_tab, "GPIO");
 	add(m_notebook);
-	
+
+	set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
 	show_all_children();
-	
 	show_deviceselect_dialog();
 	
 	m_gpio_tab.m_gpio = (std::shared_ptr<Gpio>) m_gpio;
@@ -477,7 +477,8 @@ JtagTab::start_clicked()
 	Glib::RefPtr<Gio::InetAddress> addr;
 
 	addr = Gio::InetAddress::create(m_address_row.get_widget().get_text());
-	
+
+	m_textbuffer->set_text("");
 	m_server = std::make_shared<JtagServer>(m_device, addr,
 	    std::stoi(m_gdb_port_row.get_widget().get_text()),
 	    std::stoi(m_ocd_port_row.get_widget().get_text()),
@@ -762,7 +763,6 @@ GpioTab::state_changed(bool state, uint8_t mask)
 	m_gpio->set(val);
 }
 
-/* radio button for selection input or output clicked */
 void
 GpioTab::direction_changed(bool output, uint8_t mask)
 {
@@ -779,13 +779,17 @@ bool
 GpioTab::timer()
 {
 	uint8_t val;
+	bool state;
 
 	if (m_gpio == nullptr)
 		return (true);
 
 	val = m_gpio->get();
-	for (int i = 0; i < 4; i++)
-		m_gpio_row[i].set_state(val & (1 << i));
+	for (int i = 0; i < 4; i++) {
+		state = val & (1 << i);
+		if (m_gpio_row[i].get_state() != state)
+			m_gpio_row[i].set_state(state);
+	}
 
 	return (true);
 }

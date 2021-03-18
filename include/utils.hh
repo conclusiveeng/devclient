@@ -52,7 +52,7 @@ struct fmt::formatter<Glib::ustring>
 	}
 };
 
-void show_centered_dialog(std::string title, std::string secondary = "");
+void show_centered_dialog(const std::string &title, const std::string &secondary = "");
 
 template<class Elem, class Traits>
 void hex_dump(

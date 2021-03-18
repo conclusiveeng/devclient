@@ -5,7 +5,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-void show_centered_dialog(std::string title, std::string secondary)
+void show_centered_dialog(const std::string &title, const std::string &secondary)
 {
 	Gtk::MessageDialog dialog(title);
 	dialog.set_position(Gtk::WIN_POS_CENTER_ALWAYS);

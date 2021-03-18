@@ -73,9 +73,9 @@ JtagServer::start()
 		"-c", "transport select jtag",
 		"-c", "adapter speed 1000",
 		"-c", "ftdi_channel 1",
-		"-c", "ftdi_layout_init 0x0010 0x000b",
-		"-c", "ftdi_layout_signal nTRST -data 0x10",
-		"-c", "ftdi_layout_signal nSRST -oe 0x20 -data 0x20",
+		"-c", "ftdi_layout_init 0x0030 0x000b",
+		"-c", "ftdi_layout_signal nTRST -noe 0x10 -ndata 0x10",
+		"-c", "ftdi_layout_signal nSRST -noe 0x20 -ndata 0x20",
 		"-c", fmt::format("ftdi_serial \"{}\"", m_device.serial),
 		"-c", fmt::format("ftdi_vid_pid {:#04x} {:#04x}",
 		    m_device.vid, m_device.pid),
@@ -169,7 +169,7 @@ void
 JtagServer::reset(const Device &device)
 {
 	Ftdi::Context context;
-	uint8_t data[] = { RESET_MASK, 0x00, RESET_MASK };
+	uint8_t data;
 
 	context.set_interface(INTERFACE_B);
 
@@ -194,7 +194,22 @@ JtagServer::reset(const Device &device)
 		return;
 	}
 
-	if (context.write(data, sizeof(data)) != sizeof(data)) {
+	data = RESET_MASK;
+	if (context.write(&data, sizeof(data)) != sizeof(data)) {
+		show_centered_dialog("Failed to write reset mask");
+		return;
+	}
+
+	data = 0x00;
+	if (context.write(&data, sizeof(data)) != sizeof(data)) {
+		show_centered_dialog("Failed to write reset mask");
+		return;
+	}
+
+	usleep(1000 * 100);
+
+	data = RESET_MASK;
+	if (context.write(&data, sizeof(data)) != sizeof(data)) {
 		show_centered_dialog("Failed to write reset mask");
 		return;
 	}
@@ -203,6 +218,7 @@ JtagServer::reset(const Device &device)
 		show_centered_dialog("Failed to set bitmode");
 		return;
 	}
+
 	Logger::info("Reset done");
 	context.close();
 }

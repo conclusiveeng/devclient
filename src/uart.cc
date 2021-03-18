@@ -69,6 +69,8 @@ Uart::Uart(const Device &device, const Glib::RefPtr<Gio::SocketAddress> &addr,
 		return;
 	}
 
+	m_context.set_latency(1);
+
 	try {
 		m_socket_service = Gio::ThreadedSocketService::create(10);
 		m_socket_service->add_address(
