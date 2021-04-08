@@ -59,7 +59,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tools)
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/openocd/config.log
         COMMAND ./bootstrap nosubmodule
-        COMMAND ./configure --enable-target64 --enable-libftdi --prefix=""
+        COMMAND ./configure --enable-target64 --enable-libftdi --prefix="" --disable-werror
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/openocd)
 
 add_custom_target(openocd ALL
