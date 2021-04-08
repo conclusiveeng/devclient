@@ -287,7 +287,7 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 			break;
 		case 'h':
 			usage(argv[0]);
-			return (EX_USAGE);
+			exit(0);
 		case 'j':
 			jtag = optarg;
 			cmdline = true;
@@ -326,7 +326,7 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 			break;
 		default:
 			usage(argv[0]);
-			return (EX_USAGE);
+			exit(EX_USAGE);
 		}
 	}
 
