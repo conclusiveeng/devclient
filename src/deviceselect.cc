@@ -31,6 +31,7 @@
 #include <device.hh>
 #include <deviceselect.hh>
 #include <application.hh>
+#include <utils.hh>
 
 DeviceSelectDialog::DeviceSelectDialog():
     Gtk::Dialog("Select device", true),
@@ -60,6 +61,7 @@ DeviceSelectDialog::DeviceSelectDialog():
 	get_content_area()->add(m_treeview);
 	get_action_area()->add(m_ok);
 	set_size_request(400, 300);
+	set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
 	show_all_children();
 }
 
