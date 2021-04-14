@@ -42,7 +42,8 @@ add_executable(devclient
         src/application.cc
         src/mainwindow.cc
         src/nogui.cc
-        src/main.cc)
+        src/main.cc
+        src/onie_tlv.cc)
 
 message("-- Cloning OpenOCD")
 
