@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 #include <ctime>
 #include <crc32.h>
+#include <zlib.h>
 
 #define HEADER_SIZE sizeof (struct tlv_header_raw)
 #define RECORD_SIZE sizeof (struct tlv_record_raw)
@@ -113,7 +114,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
 	read_bytes += HEADER_SIZE;
 
 	// Convert total length from big endian
-	total_bytes_eeprom = ntohs(record_header->total_length);
+	total_bytes_eeprom = ntohs(record_header->total_length) + HEADER_SIZE;
 	std::cout << "load_eeprom_file, length : [" << total_bytes_eeprom << "]\n";
 
 	while (read_bytes < total_bytes_eeprom) {
@@ -155,10 +156,9 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
 }
 
 bool OnieTLV::generate_eeprom_file(uint8_t *eeprom){
-	uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
 	uint32_t crc_to_eeprom;
-	uint8_t *eeprom_write_ptr = eeprom_file;
-	uint16_t usage = 0;
+	uint8_t *eeprom_write_ptr = eeprom;
+	usage = 0;
 
 	if (!eeprom)
 		return false;
@@ -167,6 +167,7 @@ bool OnieTLV::generate_eeprom_file(uint8_t *eeprom){
 		   [](auto const &a, auto const &b) {return a.type < b.type; });
 
 	// Prepare some space for header that will be written later.
+	usage += HEADER_SIZE;
 	eeprom_write_ptr += HEADER_SIZE;
 
 	for (auto const &record: tlv_records) {
@@ -182,26 +183,26 @@ bool OnieTLV::generate_eeprom_file(uint8_t *eeprom){
 	}
 	// Header is saved at the beginning of the file, with length as big endian.
 	struct tlv_header_raw record_header;
-	usage += HEADER_SIZE;
 	strcpy(record_header.signature, TLV_EEPROM_ID_STRING);
-	record_header.version = TLV_EEPROM_VERSION;
-	// Total length = usage in bytes + CRC raw record size + 4 bytes for CRC
-	record_header.total_length = htons(usage + TLV_EEPROM_LEN_CRC);
-	memcpy(eeprom_file, &record_header, sizeof (record_header));
+	record_header.version = (uint8_t )TLV_EEPROM_VERSION;
+	// Total length = all data records without header
+	record_header.total_length = htons(usage - HEADER_SIZE + TLV_EEPROM_LEN_CRC);
+	memcpy(eeprom, &record_header, sizeof (struct tlv_header_raw));
 
 	struct tlv_record_raw *crc_record = reinterpret_cast<struct tlv_record_raw *>(eeprom_write_ptr);
 	crc_record->type = TLV_CODE_CRC_32;
 	crc_record->length = 4;
+	// CRC32 is calculated from 'T' in header to length in
 	usage += RECORD_SIZE;
-	// Calculate CRC32 form begging up to CRC length field.
-	eeprom_tlv_crc32_generated = crc32buf(reinterpret_cast<char *>(eeprom_file), usage);
+	eeprom_tlv_crc32_generated = crc32(0, eeprom, usage);
+	eeprom_tlv_crc32_generated = eeprom_tlv_crc32_generated;// & 0xffffffff;
+
+//	eeprom_tlv_crc32_generated = crc32buf(reinterpret_cast<char *>(eeprom), usage);
 	// CRC must be saved in big endian in EEPROM
 	crc_to_eeprom = htonl(eeprom_tlv_crc32_generated);
 	memcpy(crc_record->value, &crc_to_eeprom, crc_record->length);
 	usage += crc_record->length;
 
-
-	memcpy(eeprom, eeprom_file, sizeof (eeprom_file));
 	std::cout << "EEPROM usage [" << usage << "] bytes.\n";
 	std::cout << "CRC32 [" << std::hex << eeprom_tlv_crc32_generated << "]\n";
 
@@ -319,6 +320,7 @@ bool OnieTLV::get_string_record(const uint8_t id, char *tlv_string) {
 				          " Len :" << std::dec << (int) record->data_length << " DATA [" << record->data.c_str() << "]"
 				          << std::endl;
 				strncpy(tlv_string, record->data.c_str(), record->data_length);
+				tlv_string[record->data_length] = '\0';
 				return true;
 			}
 	}

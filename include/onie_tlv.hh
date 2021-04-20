@@ -105,6 +105,7 @@ public:
 	bool get_string_record(const uint8_t id, char *tlv_string);
 	bool get_numeric_record(const uint8_t id, uint32_t *tlv_number);
 	bool get_mac_record(char *tlv_mac);
+	uint16_t usage;
 
 private:
 	std::vector<TLVRecord> tlv_records;

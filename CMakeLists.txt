@@ -76,7 +76,8 @@ target_link_libraries(devclient
         ${LIBFTDI_LIBRARIES}
         ${Boost_LIBRARIES}
         fmt
-        ucl)
+        ucl
+        z)
 target_link_libraries(devclient pthread)
 target_link_libraries(devclient ftdipp1)
 
