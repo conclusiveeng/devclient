@@ -34,7 +34,6 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <ctime>
-#include <crc32.h>
 #include <zlib.h>
 
 #define HEADER_SIZE sizeof (struct tlv_header_raw)
