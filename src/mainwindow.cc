@@ -54,6 +54,7 @@ MainWindow::MainWindow():
     m_uart_tab(this, m_device),
     m_jtag_tab(this, m_device),
     m_eeprom_tab(this, m_device),
+    m_eeprom_tlv_tab(this, m_device),
     m_gpio_tab(this, m_device)
 {
 	set_title("Conclusive developer cable client");
@@ -63,6 +64,7 @@ MainWindow::MainWindow():
 	m_notebook.append_page(m_uart_tab, "Serial console");
 	m_notebook.append_page(m_jtag_tab, "JTAG");
 	m_notebook.append_page(m_eeprom_tab, "EEPROM");
+	m_notebook.append_page(m_eeprom_tlv_tab, "EEPROM TLV");
 	m_notebook.append_page(m_gpio_tab, "GPIO");
 	add(m_notebook);
 
@@ -721,6 +723,95 @@ EepromTab::decompile_done(bool ok, int size, const std::string &errors)
 		    Glib::Markup::escape_text(errors)), true);
 		dlg.run();
 	}
+}
+EepromTLVTab::EepromTLVTab(MainWindow *parent, const Device &dev):
+		Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL),
+		m_read("Read"),
+		m_write("Write"),
+		m_parent(parent),
+		m_device(dev)
+{
+	Pango::FontDescription font("Monospace 9");
+
+	m_list_store_ref = Gtk::ListStore::create(m_model_columns);
+	m_tlv_records.set_model(m_list_store_ref);
+
+	m_tlv_records.append_column("Id", m_model_columns.m_id);
+	m_tlv_records.append_column("Name", m_model_columns.m_name);
+	m_tlv_records.append_column_editable("Value", m_model_columns.m_value);
+
+	m_add_row(TLV_CODE_PRODUCT_NAME, "Product name", "set-me-sample-name");
+	m_add_row(TLV_CODE_PART_NUMBER, "Part number", "");
+	m_add_row(TLV_CODE_SERIAL_NUMBER, "Serial number", "000000");
+	m_add_row(TLV_CODE_MAC_BASE, "MAC", "70:B3:D5:B9:D0:00");
+	m_add_row(TLV_CODE_MANUF_DATE, "Manufacture date", "01/01/2021 12:00:01");
+	m_add_row(TLV_CODE_DEV_VERSION, "Device version", "");
+	m_add_row(TLV_CODE_LABEL_REVISION, "Label revision", "");
+	m_add_row(TLV_CODE_PLATFORM_NAME, "Platform name", "");
+	m_add_row(TLV_CODE_ONIE_VERSION, "ONIE version", "1");
+	m_add_row(TLV_CODE_NUM_MACs, "Number MACs", "0");
+	m_add_row(TLV_CODE_MANUF_NAME, "Manufacturer", "Conclusive Engineering");
+	m_add_row(TLV_CODE_COUNTRY_CODE, "Country code", "PL");
+	m_add_row(TLV_CODE_VENDOR_NAME, "Vendor", "");
+	m_add_row(TLV_CODE_DIAG_VERSION, "Diag Version", "");
+	m_add_row(TLV_CODE_SERVICE_TAG, "Service tag", "");
+
+	m_scroll.add(m_tlv_records);
+
+	m_buttons.set_border_width(5);
+	m_buttons.set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_END);
+	m_buttons.pack_start(m_read);
+	m_buttons.pack_start(m_write);
+
+	set_border_width(5);
+	pack_start(m_scroll, true, true);
+	pack_start(m_buttons, false, true);
+
+	m_read.signal_clicked().connect(sigc::mem_fun(*this,
+	                                              &EepromTLVTab::read_clicked));
+	m_write.signal_clicked().connect(sigc::mem_fun(*this,
+	                                               &EepromTLVTab::write_clicked));
+}
+
+void
+EepromTLVTab::write_clicked()
+{
+	for (auto row: m_list_store_ref->children())
+	{
+		std::cout << "ID: [" << row.get_value(m_model_columns.m_id) << "] VALUE: [" << row.get_value(m_model_columns.m_value) << "]\n";
+		if (std::string(row.get_value(m_model_columns.m_value)).length() > 0)
+			otlv.save_user_tlv(row.get_value(m_model_columns.m_id), row.get_value(m_model_columns.m_value).c_str());
+	}
+
+	uint8_t eeprom_file[2048];
+	memset(eeprom_file, 'a', 2048);
+	otlv.generate_eeprom_file(eeprom_file);
+	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+otlv.usage);
+	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.write(0, *m_blob);
+}
+
+void
+EepromTLVTab::read_clicked()
+{
+	Eeprom24c eeprom(*m_parent->m_i2c);
+
+	m_blob = std::make_shared<std::vector<uint8_t>>();
+	try {
+		eeprom.read(0, 2048, *m_blob);
+		otlv.load_eeprom_file(m_blob->data());
+	} catch (const std::runtime_error &err) {
+		Gtk::MessageDialog msg("Read error");
+
+		msg.set_secondary_text(err.what());
+		msg.run();
+	}
+	bool ret;
+	char otlv_string[2048];
+
+	ret = otlv.get_string_record(TLV_CODE_PRODUCT_NAME, otlv_string);
+	m_add_row(TLV_CODE_PRODUCT_NAME, "Product name", ret?otlv_string:"");
+
 }
 
 GpioTab::GpioTab(MainWindow *parent, const Device &dev):

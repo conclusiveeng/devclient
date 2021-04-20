@@ -37,6 +37,7 @@
 #include <i2c.hh>
 #include <dtb.hh>
 //#include <profile.hh>
+#include <onie_tlv.hh>
 
 class MainWindow;
 
@@ -174,6 +175,47 @@ protected:
 	const Device &m_device;
 };
 
+class EepromTLVTab: public Gtk::Box
+{
+public:
+	EepromTLVTab(MainWindow *parent, const Device &dev);
+
+protected:
+	Gtk::ScrolledWindow m_scroll;
+	Gtk::ButtonBox m_buttons;
+	Gtk::Button m_read;
+	Gtk::Button m_write;
+	MainWindow *m_parent;
+	const Device &m_device;
+	Glib::RefPtr<Gtk::ListStore> m_list_store_ref;
+	Gtk::TreeView m_tlv_records;
+	OnieTLV otlv;
+	std::shared_ptr<std::vector<uint8_t>> m_blob;
+
+	void read_clicked();
+	void write_clicked();
+
+	class ModelColumns : public Gtk::TreeModel::ColumnRecord
+	{
+		public:
+		ModelColumns() {add(m_id); add(m_name); add(m_value);}
+
+		Gtk::TreeModelColumn<uint32_t> m_id;
+		Gtk::TreeModelColumn<Glib::ustring> m_name;
+		Gtk::TreeModelColumn<Glib::ustring> m_value;
+	};
+
+	ModelColumns m_model_columns;
+
+	void m_add_row(uint32_t id, Glib::ustring name, Glib::ustring value)
+	{
+		auto row = *(m_list_store_ref->append());
+		row[m_model_columns.m_id] = id;
+		row[m_model_columns.m_name] = name;
+		row[m_model_columns.m_value] = value;
+	}
+};
+
 class GpioTab: public Gtk::Box
 {
 public:
@@ -218,6 +260,7 @@ protected:
 	SerialTab m_uart_tab;
 	JtagTab m_jtag_tab;
 	EepromTab m_eeprom_tab;
+	EepromTLVTab m_eeprom_tlv_tab;
 	GpioTab m_gpio_tab;
 	Device m_device;
 	
