@@ -728,6 +728,7 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent, const Device &dev):
 		Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL),
 		m_read("Read"),
 		m_write("Write"),
+		m_clear("Clear EEPROM"),
 		m_parent(parent),
 		m_device(dev)
 {
@@ -762,15 +763,15 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent, const Device &dev):
 	m_buttons.set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_END);
 	m_buttons.pack_start(m_read);
 	m_buttons.pack_start(m_write);
+	m_buttons.pack_start(m_clear);
 
 	set_border_width(5);
 	pack_start(m_scroll, true, true);
 	pack_start(m_buttons, false, true);
 
-	m_read.signal_clicked().connect(sigc::mem_fun(*this,
-	                                              &EepromTLVTab::read_clicked));
-	m_write.signal_clicked().connect(sigc::mem_fun(*this,
-	                                               &EepromTLVTab::write_clicked));
+	m_read.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::read_clicked));
+	m_write.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::write_clicked));
+	m_clear.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::clear_clicked));
 }
 
 void
@@ -857,6 +858,16 @@ EepromTLVTab::read_clicked()
 	char otlv_mac[255];
 	if (otlv.get_mac_record(otlv_mac))
 		m_update_row(TLV_CODE_MAC_BASE, otlv_mac);
+}
+
+void
+EepromTLVTab::clear_clicked()
+{
+	uint8_t eeprom_file[2048];
+	memset(eeprom_file, '0', 2048);
+	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+2048);
+	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.write(0, *m_blob);
 }
 
 GpioTab::GpioTab(MainWindow *parent, const Device &dev):

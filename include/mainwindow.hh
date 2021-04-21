@@ -185,6 +185,7 @@ protected:
 	Gtk::ButtonBox m_buttons;
 	Gtk::Button m_read;
 	Gtk::Button m_write;
+	Gtk::Button m_clear;
 	MainWindow *m_parent;
 	const Device &m_device;
 	Glib::RefPtr<Gtk::ListStore> m_list_store_ref;
@@ -194,6 +195,7 @@ protected:
 
 	void read_clicked();
 	void write_clicked();
+	void clear_clicked();
 
 	class ModelColumns : public Gtk::TreeModel::ColumnRecord
 	{
