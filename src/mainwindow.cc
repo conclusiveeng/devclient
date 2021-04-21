@@ -777,7 +777,7 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 void
 EepromTLVTab::write_clicked()
 {
-	uint8_t eeprom_file[2048];
+	uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
 
 	for (auto row: m_list_store_ref->children())
 	{
@@ -870,9 +870,9 @@ EepromTLVTab::read_clicked()
 void
 EepromTLVTab::clear_clicked()
 {
-	uint8_t eeprom_file[2048];
-	memset(eeprom_file, '0', 2048);
-	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+2048);
+	uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
+	memset(eeprom_file, '0', TLV_EEPROM_MAX_SIZE);
+	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+TLV_EEPROM_MAX_SIZE);
 	Eeprom24c eeprom(*m_parent->m_i2c);
 	eeprom.write(0, *m_blob);
 }

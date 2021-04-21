@@ -109,6 +109,7 @@ bool OnieTLV::is_eeprom_valid(uint32_t crc32)
 {
 	if (crc32 == eeprom_tlv_crc32_generated)
 		return true;
+	Logger::error("CRC mismatch EEPROM value {} != expected value {}", crc32, eeprom_tlv_crc32_generated);
 	return false;
 }
 
@@ -118,7 +119,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
 	uint32_t crc_eeprom;
 	uint32_t eeprom_crc32_host;
 	uint16_t total_bytes_eeprom;
-	uint8_t eeprom_generated[2048];
+	uint8_t eeprom_generated[TLV_EEPROM_MAX_SIZE];
 	uint32_t read_bytes = 0;
 	uint8_t *eeprom_read_ptr = const_cast<uint8_t *>(eeprom);
 
@@ -126,11 +127,16 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
 		return false;
 
 	record_header = reinterpret_cast<tlv_header_raw *> (eeprom_read_ptr);
+	if (strncmp(record_header->signature, TLV_EEPROM_ID_STRING, strlen(TLV_EEPROM_ID_STRING)) != 0) {
+		Logger::error("EEPROM TLV signature is invalid. Skipping loading values.");
+		return false;
+	}
 	eeprom_read_ptr += HEADER_SIZE;
 	read_bytes += HEADER_SIZE;
 
 	// Convert total length from big endian
 	total_bytes_eeprom = ntohs(record_header->total_length) + HEADER_SIZE;
+	total_bytes_eeprom = (total_bytes_eeprom > TLV_EEPROM_MAX_SIZE)?TLV_EEPROM_MAX_SIZE:total_bytes_eeprom;
 	Logger::info("load_eeprom_file, length : [{}]", total_bytes_eeprom);
 
 	while (read_bytes < total_bytes_eeprom) {
@@ -160,7 +166,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
 
 	generate_eeprom_file(eeprom_generated);
 	if (!is_eeprom_valid(eeprom_crc32_host)) {
-		Logger::error("\"EEPROM TLV is not valid! CRC mismatch!");
+		Logger::error("EEPROM TLV is not valid! CRC mismatch!");
 		return false;
 	}
 
