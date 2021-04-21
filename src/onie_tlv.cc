@@ -39,30 +39,42 @@
 #define HEADER_SIZE sizeof (struct tlv_header_raw)
 #define RECORD_SIZE sizeof (struct tlv_record_raw)
 
-int set_mac_address(const char *value, uint8_t *mac_address) {
+bool OnieTLV::validate_mac_address(const char *mac_address) {
 	int ret;
 	int mac_bytes[6];
 
-	if (!value || (strlen(value) != 17)) {
+	if (!mac_address || (strlen(mac_address) != 17)) {
 		std::cout << "Bad MAC address format. Should be xx:xx:xx:xx:xx\n";
 		return -1;
 	}
 
-	ret = std::sscanf(value, "%02x:%02x:%02x:%02x:%02x:%02x",
-	                  &mac_bytes[0], &mac_bytes[1], &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]);
+	ret = std::sscanf(mac_address, "%02x:%02x:%02x:%02x:%02x:%02x",
+			&mac_bytes[0], &mac_bytes[1], &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]);
 	if (ret != 6)
-		return -1;
+		return false;
 
 	if ((mac_bytes[0] | mac_bytes[1] | mac_bytes[2] | mac_bytes[3] | mac_bytes[4] | mac_bytes[5]) == 0)
-		return -1;  // MAC address cannot be 00:00:00:00:00:00
+		return false;  // MAC address cannot be 00:00:00:00:00:00
 
 	if (0x01 & mac_bytes[0])
-		return -1;  // MAC address cannot be multicast
+		return false;  // MAC address cannot be multicast
+
+	return true;
+}
+
+int OnieTLV::set_mac_address(const char *value, uint8_t *mac_address) {
+	int mac_bytes[6];
+
+	if (!validate_mac_address(value))
+		return -1;
+
+	std::sscanf(value, "%02x:%02x:%02x:%02x:%02x:%02x",
+			&mac_bytes[0], &mac_bytes[1], &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]);
 
 	for (int i=0; i < 6; i++)
 		mac_address[i] = mac_bytes[i];
 
-	return ret;
+	return 0;
 }
 
 int validate_date(const char *value)
@@ -362,9 +374,9 @@ bool OnieTLV::get_mac_record(char *tlv_mac) {
 
 	record = find_record_or_nullptr(TLV_CODE_MAC_BASE);
 	if (record) {
-		sprintf(tlv_mac, "%02X:%02X:%02X:%02X:%02X:%02X",
-		        record->data.c_str()[0], record->data.c_str()[1], record->data.c_str()[2],
-		        record->data.c_str()[3], record->data.c_str()[4], record->data.c_str()[5]);
+		const char *mac = record->data.c_str();
+		sprintf(tlv_mac, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0]&0xFF, mac[1]&0xFF,
+		  mac[2]&0xFF, mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
 		std::cout << "Type " << std::hex<< (int)record->type << " Len :"<< std::dec <<
 		          (int)record->data_length << " DATA [" << tlv_mac << "]\n";
 		return true;

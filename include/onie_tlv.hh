@@ -105,6 +105,7 @@ public:
 	bool get_string_record(const uint8_t id, char *tlv_string);
 	bool get_numeric_record(const uint8_t id, uint32_t *tlv_number);
 	bool get_mac_record(char *tlv_mac);
+	bool validate_mac_address(const char *mac_address);
 	uint16_t usage;
 
 private:
@@ -114,6 +115,9 @@ private:
 	TLVRecord * find_record_or_nullptr(uint8_t id);
 	bool update_records(TLVRecord& rec);
 	bool is_eeprom_valid(uint32_t crc32);
+	int set_mac_address(const char *value, uint8_t *mac_address);
+
+
 };
 
 
