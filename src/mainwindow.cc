@@ -53,7 +53,8 @@ MainWindow::MainWindow():
     m_profile(this, m_device),
     m_uart_tab(this, m_device),
     m_jtag_tab(this, m_device),
-    m_eeprom_tab(this, m_device),
+// Disable EEPROM tab based on device tree format.
+//  m_eeprom_tab(this, m_device),
     m_eeprom_tlv_tab(this),
     m_gpio_tab(this, m_device)
 {
@@ -63,7 +64,7 @@ MainWindow::MainWindow():
 	m_notebook.append_page(m_profile, "Profile");
 	m_notebook.append_page(m_uart_tab, "Serial console");
 	m_notebook.append_page(m_jtag_tab, "JTAG");
-	m_notebook.append_page(m_eeprom_tab, "EEPROM");
+//	m_notebook.append_page(m_eeprom_tab, "EEPROM");
 	m_notebook.append_page(m_eeprom_tlv_tab, "EEPROM TLV");
 	m_notebook.append_page(m_gpio_tab, "GPIO");
 	add(m_notebook);

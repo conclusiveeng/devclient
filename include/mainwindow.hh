@@ -303,7 +303,7 @@ protected:
 	ProfileTab m_profile;
 	SerialTab m_uart_tab;
 	JtagTab m_jtag_tab;
-	EepromTab m_eeprom_tab;
+//	EepromTab m_eeprom_tab;
 	EepromTLVTab m_eeprom_tlv_tab;
 	GpioTab m_gpio_tab;
 	Device m_device;
