@@ -178,7 +178,7 @@ protected:
 class EepromTLVTab: public Gtk::Box
 {
 public:
-	EepromTLVTab(MainWindow *parent, const Device &dev);
+	EepromTLVTab(MainWindow *parent);
 
 protected:
 	Gtk::ScrolledWindow m_scroll;
@@ -187,7 +187,6 @@ protected:
 	Gtk::Button m_write;
 	Gtk::Button m_clear;
 	MainWindow *m_parent;
-	const Device &m_device;
 	Glib::RefPtr<Gtk::ListStore> m_list_store_ref;
 	Gtk::TreeView m_tlv_records;
 	OnieTLV otlv;

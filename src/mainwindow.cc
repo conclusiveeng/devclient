@@ -54,7 +54,7 @@ MainWindow::MainWindow():
     m_uart_tab(this, m_device),
     m_jtag_tab(this, m_device),
     m_eeprom_tab(this, m_device),
-    m_eeprom_tlv_tab(this, m_device),
+    m_eeprom_tlv_tab(this),
     m_gpio_tab(this, m_device)
 {
 	set_title("Conclusive developer cable client");
@@ -724,13 +724,12 @@ EepromTab::decompile_done(bool ok, int size, const std::string &errors)
 		dlg.run();
 	}
 }
-EepromTLVTab::EepromTLVTab(MainWindow *parent, const Device &dev):
+EepromTLVTab::EepromTLVTab(MainWindow *parent):
 		Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL),
 		m_read("Read"),
 		m_write("Write"),
 		m_clear("Clear EEPROM"),
-		m_parent(parent),
-		m_device(dev)
+		m_parent(parent)
 {
 	Pango::FontDescription font("Monospace 9");
 
@@ -777,6 +776,8 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent, const Device &dev):
 void
 EepromTLVTab::write_clicked()
 {
+	uint8_t eeprom_file[2048];
+
 	for (auto row: m_list_store_ref->children())
 	{
 		int parsed_number;
@@ -803,6 +804,15 @@ EepromTLVTab::write_clicked()
 				}
 				otlv.save_user_tlv(field_id, field_value.substr(0,2).c_str());
 				break;
+			case TLV_CODE_MANUF_DATE:
+				field_value = field_value.substr(0,19);
+				if (!otlv.validate_date(field_value.c_str())) {
+					m_show_error_dialog("ERROR: Invalid date vale. Required format is: MM/DD/YYYY hh:mm:ss.\n"
+						 "Data will not be saved.");
+					return;
+				}
+				otlv.save_user_tlv(field_id, field_value.c_str());
+				break;
 			case TLV_CODE_MAC_BASE:
 				field_value = field_value.substr(0,17);
 				if (!otlv.validate_mac_address(field_value.c_str())) {
@@ -814,15 +824,13 @@ EepromTLVTab::write_clicked()
 				break;
 			default:
 				if (!field_value.empty())
-					otlv.save_user_tlv(field_id, row.get_value(m_model_columns.m_value).substr(0,254).c_str());
+					otlv.save_user_tlv(field_id, field_value.substr(0,TLV_EEPROM_VALUE_MAX_SIZE-1).c_str());
 		}
-		std::cout << "ID: [" << row.get_value(m_model_columns.m_id) << "] VALUE: [" << row.get_value(m_model_columns.m_value) << "]\n";
+//		Logger::debug("Filed id {} value: {}", field_id, field_value);
 	}
 
-	uint8_t eeprom_file[2048];
-	memset(eeprom_file, 'a', 2048);
 	otlv.generate_eeprom_file(eeprom_file);
-	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+otlv.usage);
+	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+otlv.get_usage());
 	Eeprom24c eeprom(*m_parent->m_i2c);
 	eeprom.write(0, *m_blob);
 }
@@ -837,10 +845,8 @@ EepromTLVTab::read_clicked()
 		eeprom.read(0, 2048, *m_blob);
 		otlv.load_eeprom_file(m_blob->data());
 	} catch (const std::runtime_error &err) {
-		Gtk::MessageDialog msg("Read error");
-
-		msg.set_secondary_text(err.what());
-		msg.run();
+		m_show_error_dialog("Error while trying to read EEPROM.");
+		return;
 	}
 
 	for (auto tlv: otlv.TEXT_TLV) {

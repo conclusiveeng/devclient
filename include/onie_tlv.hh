@@ -25,8 +25,6 @@
  * SUCH DAMAGE.
  *
  */
-
-
 #ifndef DEVCLIENT_ONIE_TLV_H
 #define DEVCLIENT_ONIE_TLV_H
 
@@ -64,7 +62,6 @@ struct TLVRecord {
 #define TLV_EEPROM_MAX_SIZE     2048
 #define TLV_EEPROM_LEN_MAX      (TLV_EEPROM_MAX_SIZE - sizeof(struct tlv_header_raw))
 #define TLV_EEPROM_LEN_CRC      (sizeof (tlv_record_raw) + 4)
-
 #define TLV_EEPROM_VALUE_MAX_SIZE   255
 
 /*
@@ -91,9 +88,6 @@ struct TLVRecord {
 #define TLV_CODE_CRC_32         0xFE    /* 4 bytes */
 #define TLV_CODE_RESERVED_1     0xFF    /* None */
 
-
-
-
 class OnieTLV {
 public:
 	OnieTLV();
@@ -105,8 +99,9 @@ public:
 	bool get_string_record(const uint8_t id, char *tlv_string);
 	bool get_numeric_record(const uint8_t id, uint32_t *tlv_number);
 	bool get_mac_record(char *tlv_mac);
+	size_t get_usage();
 	bool validate_mac_address(const char *mac_address);
-	uint16_t usage;
+	bool validate_date(const char *value);
 
 	static constexpr uint8_t NUMERIC_TLV[] = {TLV_CODE_NUM_MACs, TLV_CODE_DEV_VERSION};
 	static constexpr uint8_t TEXT_TLV[] = {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
@@ -117,14 +112,12 @@ public:
 private:
 	std::vector<TLVRecord> tlv_records;
 	uint32_t eeprom_tlv_crc32_generated;
+	uint16_t usage;
 
 	TLVRecord * find_record_or_nullptr(uint8_t id);
-	bool update_records(TLVRecord& rec);
+	void update_records(TLVRecord& rec);
 	bool is_eeprom_valid(uint32_t crc32);
 	int set_mac_address(const char *value, uint8_t *mac_address);
-
-
 };
-
 
 #endif //DEVCLIENT_ONIE_TLV_H

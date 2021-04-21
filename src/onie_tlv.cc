@@ -35,16 +35,43 @@
 #include <netinet/in.h>
 #include <ctime>
 #include <zlib.h>
+#include <log.hh>
 
 #define HEADER_SIZE sizeof (struct tlv_header_raw)
 #define RECORD_SIZE sizeof (struct tlv_record_raw)
 
-bool OnieTLV::validate_mac_address(const char *mac_address) {
+OnieTLV::OnieTLV()
+{
+
+};
+
+OnieTLV::~OnieTLV()
+{
+
+}
+
+bool OnieTLV::validate_date(const char *value)
+{
+	struct tm tm;
+
+	if (!value || strlen(value) != 19) {
+		Logger::error("Bad date format. Should be MM/DD/YYYY hh:mm:ss");
+		return false;
+	}
+
+	if (!strptime(value, "%m/%d/%Y %H:%M:%S", &tm))
+		return false;
+
+	return true;
+}
+
+bool OnieTLV::validate_mac_address(const char *mac_address)
+{
 	int ret;
 	int mac_bytes[6];
 
 	if (!mac_address || (strlen(mac_address) != 17)) {
-		std::cout << "Bad MAC address format. Should be xx:xx:xx:xx:xx\n";
+		Logger::error("Bad MAC address format. Should be xx:xx:xx:xx:xx");
 		return -1;
 	}
 
@@ -62,7 +89,8 @@ bool OnieTLV::validate_mac_address(const char *mac_address) {
 	return true;
 }
 
-int OnieTLV::set_mac_address(const char *value, uint8_t *mac_address) {
+int OnieTLV::set_mac_address(const char *value, uint8_t *mac_address)
+{
 	int mac_bytes[6];
 
 	if (!validate_mac_address(value))
@@ -77,38 +105,15 @@ int OnieTLV::set_mac_address(const char *value, uint8_t *mac_address) {
 	return 0;
 }
 
-int validate_date(const char *value)
+bool OnieTLV::is_eeprom_valid(uint32_t crc32)
 {
-	struct tm tm;
-
-	if (!value || strlen(value) != 19) {
-		std::cout << "Bad date format. Should be MM/DD/YYYY hh:mm:ss\n";
-		return -1;
-	}
-
-	if (!strptime(value, "%m/%d/%Y %H:%M:%S", &tm))
-		return -1;
-
-	return 0;
-}
-
-OnieTLV::OnieTLV()
-{
-
-};
-
-OnieTLV::~OnieTLV()
-{
-
-}
-
-bool OnieTLV::is_eeprom_valid(uint32_t crc32) {
 	if (crc32 == eeprom_tlv_crc32_generated)
 		return true;
 	return false;
 }
 
-bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
+bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
+{
 	struct tlv_header_raw *record_header;
 	uint32_t crc_eeprom;
 	uint32_t eeprom_crc32_host;
@@ -126,7 +131,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
 
 	// Convert total length from big endian
 	total_bytes_eeprom = ntohs(record_header->total_length) + HEADER_SIZE;
-	std::cout << "load_eeprom_file, length : [" << total_bytes_eeprom << "]\n";
+	Logger::info("load_eeprom_file, length : [{}]", total_bytes_eeprom);
 
 	while (read_bytes < total_bytes_eeprom) {
 		TLVRecord record;
@@ -135,8 +140,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
 		record.type = record_raw->type;
 		record.data_length = record_raw->length;
 		record.data.assign(reinterpret_cast<char *>(record_raw->value), record.data_length);
-		std::cout << "Type " << std::hex << (int)record.type << " Len: " << std::dec << record.data_length << std::endl;
-
+		Logger::debug("Type {} Len: {}", record.type, record.data_length);
 		update_records(record);
 
 		eeprom_read_ptr += RECORD_SIZE + record.data_length;
@@ -145,7 +149,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
 
 	TLVRecord *crc32_record = find_record_or_nullptr(TLV_CODE_CRC_32);
 	if (!crc32_record) {
-		std::cout << "CRC32 NOT FOUND! Start from scratch!" << std::endl;
+		Logger::error("CRC32 NOT FOUND! Start from scratch!");
 		tlv_records.clear();
 		return false;
 	}
@@ -153,32 +157,30 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom) {
 	// CRC in EEPROM is saved as big endian
 	memcpy(&crc_eeprom, crc32_record->data.c_str(), crc32_record->data_length);
 	eeprom_crc32_host = ntohl(crc_eeprom);
-	std::cout << "EEPROM read [" << total_bytes_eeprom << "]\n";
-	std::cout << "CRC32 [" << std::hex << eeprom_crc32_host << "]\n";
 
 	generate_eeprom_file(eeprom_generated);
-	if (is_eeprom_valid(eeprom_crc32_host)) {
-		std::cout << "EEPROM TLV is valid.\n";
-		return true;
+	if (!is_eeprom_valid(eeprom_crc32_host)) {
+		Logger::error("\"EEPROM TLV is not valid! CRC mismatch!");
+		return false;
 	}
 
-	std::cout << "EEPROM TLV is not valid! CRC mismatch.\n";
-	return false;
+	Logger::debug("EEPROM TLV is valid.");
+	return true;
 }
 
-bool OnieTLV::generate_eeprom_file(uint8_t *eeprom){
+bool OnieTLV::generate_eeprom_file(uint8_t *eeprom)
+{
 	uint32_t crc_to_eeprom;
 	uint8_t *eeprom_write_ptr = eeprom;
-	usage = 0;
 
 	if (!eeprom)
 		return false;
-	// Sort all TLV values based on TLV id ascending
+
 	std::sort(tlv_records.begin(), tlv_records.end(),
 		   [](auto const &a, auto const &b) {return a.type < b.type; });
 
 	// Prepare some space for header that will be written later.
-	usage += HEADER_SIZE;
+	usage = HEADER_SIZE;
 	eeprom_write_ptr += HEADER_SIZE;
 
 	for (auto const &record: tlv_records) {
@@ -206,21 +208,18 @@ bool OnieTLV::generate_eeprom_file(uint8_t *eeprom){
 	// CRC32 is calculated from 'T' in header to length in
 	usage += RECORD_SIZE;
 	eeprom_tlv_crc32_generated = crc32(0, eeprom, usage);
-	eeprom_tlv_crc32_generated = eeprom_tlv_crc32_generated;// & 0xffffffff;
 
-//	eeprom_tlv_crc32_generated = crc32buf(reinterpret_cast<char *>(eeprom), usage);
 	// CRC must be saved in big endian in EEPROM
 	crc_to_eeprom = htonl(eeprom_tlv_crc32_generated);
 	memcpy(crc_record->value, &crc_to_eeprom, crc_record->length);
 	usage += crc_record->length;
 
-	std::cout << "EEPROM usage [" << usage << "] bytes.\n";
-	std::cout << "CRC32 [" << std::hex << eeprom_tlv_crc32_generated << "]\n";
-
+	Logger::debug("EEPROM usage [{}] bytes.", usage);
 	return true;
 }
 
-bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value) {
+bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value)
+{
 	std::pair<std::string, size_t> tlv_value;
 	TLVRecord new_record;
 	switch (tlv_code) {
@@ -288,7 +287,7 @@ bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value) {
 			break;
 		case TLV_CODE_MANUF_DATE:
 			// Manufacture date must be in format MM/DD/YYYY hh:mm:ss it's stored in this format in EEPROM
-			if (validate_date(value) < 0) {
+			if (!validate_date(value)) {
 				std::cout << "Bad date format!\n";
 				break;
 			}
@@ -306,7 +305,8 @@ bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value) {
 	return true;
 }
 
-bool OnieTLV::get_string_record(const uint8_t id, char *tlv_string) {
+bool OnieTLV::get_string_record(const uint8_t id, char *tlv_string)
+{
 	TLVRecord *record;
 	if (!tlv_string)
 		return false;
@@ -326,23 +326,19 @@ bool OnieTLV::get_string_record(const uint8_t id, char *tlv_string) {
 		case TLV_CODE_COUNTRY_CODE:
 		case TLV_CODE_MANUF_DATE:
 			record = find_record_or_nullptr(id);
-			if (record) {
-				std::cout << "Type " << std::hex << (int) record->type <<
-				          " Len :" << std::dec << (int) record->data_length << " DATA [" << record->data.c_str() << "]"
-				          << std::endl;
-				strncpy(tlv_string, record->data.c_str(), record->data_length);
-				tlv_string[record->data_length] = '\0';
-				return true;
+			if (!record) {
+				Logger::error("Field id {} was not found!", id);
+				return false;
 			}
+			strncpy(tlv_string, record->data.c_str(), record->data_length);
+			tlv_string[record->data_length] = '\0';
 	}
-
-	std::cout << "Field id: " << std::hex << (int)id << " was not found!" << std::endl;
-	return false;
+	return true;
 }
 
-bool OnieTLV::get_numeric_record(const uint8_t id, uint32_t *tlv_value) {
+bool OnieTLV::get_numeric_record(const uint8_t id, uint32_t *tlv_value)
+{
 	TLVRecord *record;
-
 	if (!tlv_value)
 		return false;
 
@@ -350,43 +346,47 @@ bool OnieTLV::get_numeric_record(const uint8_t id, uint32_t *tlv_value) {
 		return false;
 
 	record = find_record_or_nullptr(id);
-	if (record) {
-		if (record->type == TLV_CODE_NUM_MACs) {
-			uint16_t eeprom_num_mac;
-			memcpy(&eeprom_num_mac, record->data.c_str(), record->data_length);
-			*tlv_value = ntohs(eeprom_num_mac);
-		} else {
-			*tlv_value = record->data.c_str()[0];
-		}
-		std::cout << "Type " << std::hex<< (int)record->type << " Len :"<< std::dec <<
-		(int)record->data_length << " DATA [" << *tlv_value << "]\n";
-		return true;
+	if (!record) {
+		Logger::error("Field id {} was not found!", id);
+		return false;
 	}
 
-	std::cout << "Field id: " << std::hex << (int)id << " was not found!" << std::endl;
-	return false;
+	if (record->type == TLV_CODE_DEV_VERSION) {
+		*tlv_value = record->data.c_str()[0];
+	} else {
+		uint16_t eeprom_num_mac;
+		memcpy(&eeprom_num_mac, record->data.c_str(), record->data_length);
+		*tlv_value = ntohs(eeprom_num_mac);
+	}
+
+	return true;
 }
 
-bool OnieTLV::get_mac_record(char *tlv_mac) {
+size_t OnieTLV::get_usage()
+{
+	return usage;
+}
+
+bool OnieTLV::get_mac_record(char *tlv_mac)
+{
 	TLVRecord *record;
 	if (!tlv_mac)
 		return false;
 
 	record = find_record_or_nullptr(TLV_CODE_MAC_BASE);
-	if (record) {
-		const char *mac = record->data.c_str();
-		sprintf(tlv_mac, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0]&0xFF, mac[1]&0xFF,
-		  mac[2]&0xFF, mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
-		std::cout << "Type " << std::hex<< (int)record->type << " Len :"<< std::dec <<
-		          (int)record->data_length << " DATA [" << tlv_mac << "]\n";
-		return true;
+	if (!record) {
+		Logger::error("Field id {} was not found!", TLV_CODE_MAC_BASE);
+		return false;
 	}
 
-	std::cout << "Field id: " << std::hex << TLV_CODE_MAC_BASE << " was not found!" << std::endl;
-	return false;
+	const char *mac = record->data.c_str();
+	sprintf(tlv_mac, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0]&0xFF, mac[1]&0xFF,
+			mac[2]&0xFF, mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
+	return true;
 }
 
-TLVRecord *OnieTLV::find_record_or_nullptr(uint8_t id) {
+TLVRecord *OnieTLV::find_record_or_nullptr(uint8_t id)
+{
 	auto is_selected_id = [id](TLVRecord rec){ return rec.type == id; };
 
 	auto found_record = std::find_if(std::begin(tlv_records), std::end(tlv_records), is_selected_id);
@@ -396,15 +396,14 @@ TLVRecord *OnieTLV::find_record_or_nullptr(uint8_t id) {
 		return nullptr;
 }
 
-bool OnieTLV::update_records(TLVRecord& rec) {
+void OnieTLV::update_records(TLVRecord& rec)
+{
 	for (auto &record : tlv_records) {
 		if (record.type == rec.type) {
 			record.data = rec.data;
 			record.data_length = rec.data_length;
-			return true;
+			return;
 		}
 	}
-
 	tlv_records.push_back(rec);
-	return true;
 };
