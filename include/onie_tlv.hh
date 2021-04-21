@@ -108,6 +108,12 @@ public:
 	bool validate_mac_address(const char *mac_address);
 	uint16_t usage;
 
+	static constexpr uint8_t NUMERIC_TLV[] = {TLV_CODE_NUM_MACs, TLV_CODE_DEV_VERSION};
+	static constexpr uint8_t TEXT_TLV[] = {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
+										TLV_CODE_LABEL_REVISION, TLV_CODE_PLATFORM_NAME, TLV_CODE_ONIE_VERSION,
+										TLV_CODE_MANUF_NAME, TLV_CODE_COUNTRY_CODE, TLV_CODE_VENDOR_NAME,
+										TLV_CODE_DIAG_VERSION, TLV_CODE_SERVICE_TAG, TLV_CODE_VENDOR_EXT};
+
 private:
 	std::vector<TLVRecord> tlv_records;
 	uint32_t eeprom_tlv_crc32_generated;

@@ -745,11 +745,11 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent, const Device &dev):
 	m_add_row(TLV_CODE_SERIAL_NUMBER, "Serial number", "000000");
 	m_add_row(TLV_CODE_MAC_BASE, "MAC", "70:B3:D5:B9:D0:00");
 	m_add_row(TLV_CODE_MANUF_DATE, "Manufacture date", "01/01/2021 12:00:01");
-	m_add_row(TLV_CODE_DEV_VERSION, "Device version", "");
+	m_add_row(TLV_CODE_DEV_VERSION, "Device version", "1");
 	m_add_row(TLV_CODE_LABEL_REVISION, "Label revision", "");
 	m_add_row(TLV_CODE_PLATFORM_NAME, "Platform name", "");
 	m_add_row(TLV_CODE_ONIE_VERSION, "ONIE version", "1");
-	m_add_row(TLV_CODE_NUM_MACs, "Number MACs", "0");
+	m_add_row(TLV_CODE_NUM_MACs, "Number MACs", "1");
 	m_add_row(TLV_CODE_MANUF_NAME, "Manufacturer", "Conclusive Engineering");
 	m_add_row(TLV_CODE_COUNTRY_CODE, "Country code", "PL");
 	m_add_row(TLV_CODE_VENDOR_NAME, "Vendor", "");
@@ -778,9 +778,44 @@ EepromTLVTab::write_clicked()
 {
 	for (auto row: m_list_store_ref->children())
 	{
+		int parsed_number;
+		uint8_t field_id = row.get_value(m_model_columns.m_id);
+		Glib::ustring field_value = row.get_value(m_model_columns.m_value);
+		switch (field_id) {
+			case TLV_CODE_DEV_VERSION:
+				parsed_number = m_parse_user_number(field_value, 0, 255, "Device version");
+				if (parsed_number == -1)
+					return;
+				otlv.save_user_tlv(field_id, reinterpret_cast<char*>(&parsed_number));
+			break;
+			case TLV_CODE_NUM_MACs:
+				parsed_number = m_parse_user_number(field_value, 1, 65535, "MAC number");
+				if (parsed_number == -1)
+					return;
+				otlv.save_user_tlv(field_id, std::to_string(parsed_number).c_str());
+			break;
+			case TLV_CODE_COUNTRY_CODE:
+				if (field_value.length() != 2) {
+					m_show_error_dialog("ERROR: Country code must 2 characters only. Example: PL.\n"
+						 "Data will not be saved.");
+					return;
+				}
+				otlv.save_user_tlv(field_id, field_value.substr(0,2).c_str());
+				break;
+			case TLV_CODE_MAC_BASE:
+				field_value = field_value.substr(0,17);
+				if (!otlv.validate_mac_address(field_value.c_str())) {
+					m_show_error_dialog("ERROR: Invalid MAC address. Required format is: xx:xx:xx:xx:xx.\n"
+						 "Data will not be saved.");
+					return;
+				}
+				otlv.save_user_tlv(field_id, field_value.c_str());
+				break;
+			default:
+				if (!field_value.empty())
+					otlv.save_user_tlv(field_id, row.get_value(m_model_columns.m_value).substr(0,254).c_str());
+		}
 		std::cout << "ID: [" << row.get_value(m_model_columns.m_id) << "] VALUE: [" << row.get_value(m_model_columns.m_value) << "]\n";
-		if (std::string(row.get_value(m_model_columns.m_value)).length() > 0)
-			otlv.save_user_tlv(row.get_value(m_model_columns.m_id), row.get_value(m_model_columns.m_value).c_str());
 	}
 
 	uint8_t eeprom_file[2048];
@@ -806,12 +841,22 @@ EepromTLVTab::read_clicked()
 		msg.set_secondary_text(err.what());
 		msg.run();
 	}
-	bool ret;
-	char otlv_string[2048];
 
-	ret = otlv.get_string_record(TLV_CODE_PRODUCT_NAME, otlv_string);
-	m_add_row(TLV_CODE_PRODUCT_NAME, "Product name", ret?otlv_string:"");
+	for (auto tlv: otlv.TEXT_TLV) {
+		char otlv_string[2048];
+		if (otlv.get_string_record(tlv, otlv_string))
+			m_update_row(tlv, otlv_string);
+	}
 
+	for (auto tlv: otlv.NUMERIC_TLV) {
+		uint32_t otlv_number;
+		if (otlv.get_numeric_record(tlv, &otlv_number))
+			m_update_row(tlv, std::to_string(otlv_number));
+	}
+
+	char otlv_mac[255];
+	if (otlv.get_mac_record(otlv_mac))
+		m_update_row(TLV_CODE_MAC_BASE, otlv_mac);
 }
 
 GpioTab::GpioTab(MainWindow *parent, const Device &dev):
