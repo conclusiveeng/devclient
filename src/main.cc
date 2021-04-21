@@ -47,7 +47,6 @@
 #include <application.hh>
 #include <nogui.hh>
 #include <ucl.h>
-#include <onie_tlv.hh>
 
 using namespace std;
 
@@ -72,61 +71,37 @@ static const struct option long_options[] = {
 static void
 usage(const std::string &argv0)
 {
-//	fmt::print("usage: {:s}\n", argv0);
-//	fmt::print("-b:		baud rate for UART port, allowed values: 9600, 19200, 38400, 57600, 115200\n");
-//	fmt::print("		example: -b 115200\n");
-//	fmt::print("-c:		compile dts from file and write it to eeprom\n");
-//	fmt::print("		example: -c board.dts\n");
-//	fmt::print("-d:		serial string of the selected device\n");
-//	fmt::print("		example: -d 006/2019\n");
-//	fmt::print("-g:		set value for gpio pins\n");
-//	fmt::print("-h:		this help message\n");
-//	fmt::print("-j:		IP address and two TCP port numbers for listening for JTAG communication\n");
-//	fmt::print("		cannot be used together with -p option\n");
-//	fmt::print("		parameter format: <IP_address>:<gdb_port>:<telnet_port>\n");
-//	fmt::print("		example: -j 0.0.0.0:3333:4444\n");
-//	fmt::print("-l:		list connected devices\n");
-//	fmt::print("-p:		enable JTAG pass-through mode, cannot be used together with -j option\n");
-//	fmt::print("-r:		read raw eeprom contents (binary data) and save it to file\n");
-//	fmt::print("		example: -r eeprom.img\n");
-//	fmt::print("-s:		absolute path to script\n");
-//	fmt::print("-t:		download contents of eeprom, decompile it and write it to dts file\n");
-//	fmt::print("		example: -t board.dts\n");
-//	fmt::print("-u:		IP address and TCP port number for listening for serial/uart communication\n");
-//	fmt::print("		example: -u 0.0.0.0:2222\n");
-//	fmt::print("-w:		write raw contents of file (binary data) to eeprom\n");
-//	fmt::print("		example: -w eeprom.img\n");
-//	fmt::print("-x:		configuration file name\n");
-//	fmt::print("		example: -w devclient.cfg\n");
-//	fmt::print("\nInvocation examples:\n");
-//	fmt::print("{:s} -d 006/2019 -u 0.0.0.0:2222 -b 115200 -j 0.0.0.0:3333:4444 -s /tmp/script\n", argv0);
-//	fmt::print("{:s} -d 006/2019 -u 0.0.0.0:2222 -b 115200 -p\n", argv0);
-//	fmt::print("{:s} -d 006/2019 -w eeprom.img\n", argv0);
-//	fmt::print("{:s} -x devclient.cfg\n", argv0);
-
-	uint8_t eeprom_file_mock[2048];
-	OnieTLV otlv;
-	otlv.add_tlv(TLV_CODE_MAC_BASE, "00:01:02:03:04:05");
-	otlv.add_tlv(TLV_CODE_MAC_BASE, "00:00:00:00:00:00");
-	otlv.add_tlv(TLV_CODE_NUM_MACs, "2");
-	otlv.add_tlv(TLV_CODE_DEV_VERSION, "1");
-	otlv.add_tlv(TLV_CODE_PRODUCT_NAME, "KSTR-SAMA5D27");
-	otlv.add_tlv(TLV_CODE_SERIAL_NUMBER, "001/21");
-	otlv.add_tlv(TLV_CODE_COUNTRY_CODE, "PL");
-	otlv.add_tlv(TLV_CODE_MANUF_DATE, "11/02/2021 10:01:33");
-	otlv.generate_eeprom(eeprom_file_mock);
-
-	OnieTLV otlv2;
-	otlv2.read_eeprom(eeprom_file_mock);
-	char text[255];
-	uint32_t number;
-	otlv2.get_string_record(TLV_CODE_PRODUCT_NAME, text);
-	otlv2.get_string_record(TLV_CODE_MANUF_DATE, text);
-	otlv2.get_string_record(TLV_CODE_SERVICE_TAG, text);
-	otlv2.get_numeric_record(TLV_CODE_DEV_VERSION, &number);
-	otlv2.get_numeric_record(TLV_CODE_NUM_MACs, &number);
-	otlv2.get_mac_record(text);
-	std::cout << "MAC is " << text << std::endl;
+	fmt::print("usage: {:s}\n", argv0);
+	fmt::print("-b:		baud rate for UART port, allowed values: 9600, 19200, 38400, 57600, 115200\n");
+	fmt::print("		example: -b 115200\n");
+	fmt::print("-c:		compile dts from file and write it to eeprom\n");
+	fmt::print("		example: -c board.dts\n");
+	fmt::print("-d:		serial string of the selected device\n");
+	fmt::print("		example: -d 006/2019\n");
+	fmt::print("-g:		set value for gpio pins\n");
+	fmt::print("-h:		this help message\n");
+	fmt::print("-j:		IP address and two TCP port numbers for listening for JTAG communication\n");
+	fmt::print("		cannot be used together with -p option\n");
+	fmt::print("		parameter format: <IP_address>:<gdb_port>:<telnet_port>\n");
+	fmt::print("		example: -j 0.0.0.0:3333:4444\n");
+	fmt::print("-l:		list connected devices\n");
+	fmt::print("-p:		enable JTAG pass-through mode, cannot be used together with -j option\n");
+	fmt::print("-r:		read raw eeprom contents (binary data) and save it to file\n");
+	fmt::print("		example: -r eeprom.img\n");
+	fmt::print("-s:		absolute path to script\n");
+	fmt::print("-t:		download contents of eeprom, decompile it and write it to dts file\n");
+	fmt::print("		example: -t board.dts\n");
+	fmt::print("-u:		IP address and TCP port number for listening for serial/uart communication\n");
+	fmt::print("		example: -u 0.0.0.0:2222\n");
+	fmt::print("-w:		write raw contents of file (binary data) to eeprom\n");
+	fmt::print("		example: -w eeprom.img\n");
+	fmt::print("-x:		configuration file name\n");
+	fmt::print("		example: -w devclient.cfg\n");
+	fmt::print("\nInvocation examples:\n");
+	fmt::print("{:s} -d 006/2019 -u 0.0.0.0:2222 -b 115200 -j 0.0.0.0:3333:4444 -s /tmp/script\n", argv0);
+	fmt::print("{:s} -d 006/2019 -u 0.0.0.0:2222 -b 115200 -p\n", argv0);
+	fmt::print("{:s} -d 006/2019 -w eeprom.img\n", argv0);
+	fmt::print("{:s} -x devclient.cfg\n", argv0);
 }
 
 
