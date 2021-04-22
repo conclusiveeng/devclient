@@ -789,7 +789,7 @@ EepromTLVTab::write_clicked()
 				parsed_number = m_parse_user_number(field_value, 0, 255, "Device version");
 				if (parsed_number == -1)
 					return;
-				otlv.save_user_tlv(field_id, reinterpret_cast<char*>(&parsed_number));
+				otlv.save_user_tlv(field_id, std::to_string(parsed_number).c_str());
 			break;
 			case TLV_CODE_NUM_MACs:
 				parsed_number = m_parse_user_number(field_value, 1, 65535, "MAC number");

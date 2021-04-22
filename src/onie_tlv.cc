@@ -249,9 +249,11 @@ bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value)
 			break;
 		case TLV_CODE_DEV_VERSION:
 			// Device version is just single byte
+			int num_version;
 			new_record.type = tlv_code;
 			new_record.data_length = 1;
-			new_record.data.assign(value, new_record.data_length);
+			num_version = std::stoi(value);
+			new_record.data.assign(reinterpret_cast<char *>(&num_version), new_record.data_length);
 
 			update_records(new_record);
 			break;
@@ -264,6 +266,7 @@ bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value)
 			num_mac = strtol(value, NULL, 0);
 			num_mac_eeprom = htons(num_mac);
 			new_record.data.assign(reinterpret_cast<char *>(&num_mac_eeprom), new_record.data_length);
+
 			update_records(new_record);
 			break;
 		case TLV_CODE_COUNTRY_CODE:
@@ -358,7 +361,7 @@ bool OnieTLV::get_numeric_record(const uint8_t id, uint32_t *tlv_value)
 	}
 
 	if (record->type == TLV_CODE_DEV_VERSION) {
-		*tlv_value = record->data.c_str()[0];
+		*tlv_value = (uint8_t)record->data.c_str()[0];
 	} else {
 		uint16_t eeprom_num_mac;
 		memcpy(&eeprom_num_mac, record->data.c_str(), record->data_length);
