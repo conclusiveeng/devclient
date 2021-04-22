@@ -737,7 +737,7 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 	m_list_store_ref = Gtk::ListStore::create(m_model_columns);
 	m_tlv_records.set_model(m_list_store_ref);
 
-	m_tlv_records.append_column("Id", m_model_columns.m_id);
+	m_tlv_records.append_column_numeric("Id", m_model_columns.m_id, "0x%02x");
 	m_tlv_records.append_column("Name", m_model_columns.m_name);
 	m_tlv_records.append_column_editable("Value", m_model_columns.m_value);
 
