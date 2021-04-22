@@ -436,9 +436,13 @@ void OnieTLV::update_records(TLVRecord& rec)
 };
 
 bool OnieTLV::load_from_yaml(const char *filename) {
-	YAML::Node config = YAML::LoadFile(filename);
-	if (config)
-		return false;
+	YAML::Node config;
+	try {
+		config = YAML::LoadFile(filename);
+	}
+	catch (const YAML::BadFile& badFile) {
+		Logger::error("Error while reading file.");
+	}
 
 	if (config["board-name"]) {
 		board_name = config["board-name"].as<std::string>();
