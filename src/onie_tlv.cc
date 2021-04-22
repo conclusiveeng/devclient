@@ -36,13 +36,31 @@
 #include <ctime>
 #include <zlib.h>
 #include <log.hh>
+#include <yaml-cpp/yaml.h>
 
 #define HEADER_SIZE sizeof (struct tlv_header_raw)
 #define RECORD_SIZE sizeof (struct tlv_record_raw)
 
 OnieTLV::OnieTLV()
 {
+	yaml_map["product-name"] = TLV_CODE_PRODUCT_NAME;
+	yaml_map["part-number"] = TLV_CODE_PART_NUMBER;
+	yaml_map["serial-number"] = TLV_CODE_SERIAL_NUMBER;
+	yaml_map["mac-address"] = TLV_CODE_MAC_BASE;
+	yaml_map["manufacture-date"] = TLV_CODE_MANUF_DATE;
+	yaml_map["device-version"] = TLV_CODE_DEV_VERSION;
+	yaml_map["label-revision"] = TLV_CODE_LABEL_REVISION;
+	yaml_map["platform-name"] = TLV_CODE_PLATFORM_NAME;
+	yaml_map["onie-version"] = TLV_CODE_ONIE_VERSION;
+	yaml_map["number-mac"] = TLV_CODE_NUM_MACs;
+	yaml_map["manufacturer"] = TLV_CODE_MANUF_NAME;
+	yaml_map["country-code"] = TLV_CODE_COUNTRY_CODE;
+	yaml_map["vendor-name"] = TLV_CODE_VENDOR_NAME;
+	yaml_map["diag-version"] = TLV_CODE_DIAG_VERSION;
+	yaml_map["service-tag"] = TLV_CODE_SERVICE_TAG;
 
+	board_name = "Not set";
+	revision = "Not set";
 };
 
 OnieTLV::~OnieTLV()
@@ -416,3 +434,45 @@ void OnieTLV::update_records(TLVRecord& rec)
 	}
 	tlv_records.push_back(rec);
 };
+
+bool OnieTLV::load_from_yaml(const char *filename) {
+	YAML::Node config = YAML::LoadFile(filename);
+	if (config)
+		return false;
+
+	if (config["board-name"]) {
+		board_name = config["board-name"].as<std::string>();
+		Logger::debug("Reading YAML config. Board name: {}", board_name);
+	} else {
+		Logger::error("EEPROM configuration file doesn't have board name. Abort reading.");
+		return false;
+	}
+	if (config["rev"]) {
+		revision = config["rev"].as<std::string>();
+		Logger::debug("Reading YAML config. Revision: {}", revision);
+	} else {
+		Logger::error("EEPROM configuration file doesn't have revision. Abort reading.");
+		return false;
+	}
+
+	if (!config["eeprom"]){
+		Logger::error("EEPROM configuration file doesn't have eeeprom section. Abort reading.");
+		return false;
+	}
+
+	int tlv_id;
+	for (YAML::const_iterator it=config["eeprom"].begin();it!=config["eeprom"].end();++it) {
+		YAML::Node node = *it;
+		if (!node["name"] || !node["value"])
+			continue;
+
+		try {
+			tlv_id = yaml_map.at(node["name"].as<std::string>());
+		} catch (const std::out_of_range& oor) {
+			continue;
+		}
+
+		save_user_tlv(tlv_id, node["value"].as<std::string>().c_str());
+	}
+	return true;
+}

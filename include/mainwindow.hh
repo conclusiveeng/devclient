@@ -183,6 +183,7 @@ public:
 protected:
 	Gtk::ScrolledWindow m_scroll;
 	Gtk::ButtonBox m_buttons;
+	Gtk::Button m_load;
 	Gtk::Button m_read;
 	Gtk::Button m_write;
 	Gtk::Button m_clear;
@@ -192,6 +193,7 @@ protected:
 	OnieTLV otlv;
 	std::shared_ptr<std::vector<uint8_t>> m_blob;
 
+	void load_clicked();
 	void read_clicked();
 	void write_clicked();
 	void clear_clicked();

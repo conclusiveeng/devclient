@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <map>
 
 /*
  * Here comes structure of the ONIE TLV EEPROM format
@@ -102,6 +103,7 @@ public:
 	size_t get_usage();
 	bool validate_mac_address(const char *mac_address);
 	bool validate_date(const char *value);
+	bool load_from_yaml(const char *filename);
 
 	static constexpr uint8_t NUMERIC_TLV[] = {TLV_CODE_NUM_MACs, TLV_CODE_DEV_VERSION};
 	static constexpr uint8_t TEXT_TLV[] = {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
@@ -111,8 +113,11 @@ public:
 
 private:
 	std::vector<TLVRecord> tlv_records;
+	std::map<std::string, uint8_t > yaml_map;
 	uint32_t eeprom_tlv_crc32_generated;
 	uint16_t usage;
+	std::string board_name;
+	std::string revision;
 
 	TLVRecord * find_record_or_nullptr(uint8_t id);
 	void update_records(TLVRecord& rec);

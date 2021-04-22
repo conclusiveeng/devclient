@@ -727,8 +727,9 @@ EepromTab::decompile_done(bool ok, int size, const std::string &errors)
 }
 EepromTLVTab::EepromTLVTab(MainWindow *parent):
 		Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL),
-		m_read("Read"),
-		m_write("Write"),
+		m_load("Load YAML"),
+		m_read("Read EEPROM"),
+		m_write("Write EEPROM"),
 		m_clear("Clear EEPROM"),
 		m_parent(parent)
 {
@@ -761,6 +762,7 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 
 	m_buttons.set_border_width(5);
 	m_buttons.set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_END);
+	m_buttons.pack_start(m_load);
 	m_buttons.pack_start(m_read);
 	m_buttons.pack_start(m_write);
 	m_buttons.pack_start(m_clear);
@@ -769,9 +771,46 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 	pack_start(m_scroll, true, true);
 	pack_start(m_buttons, false, true);
 
+	m_load.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::load_clicked));
 	m_read.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::read_clicked));
 	m_write.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::write_clicked));
 	m_clear.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::clear_clicked));
+}
+
+void
+EepromTLVTab::load_clicked()
+{
+	Glib::ustring yaml_config_path;
+	Gtk::FileChooserDialog file_dialog("Load .yaml file with EEPROM configuration for the board");
+
+	file_dialog.add_button("Select", Gtk::RESPONSE_OK);
+	file_dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+
+	gint ret = file_dialog.run();
+
+	if (ret == Gtk::RESPONSE_OK)
+		yaml_config_path = file_dialog.get_filename();
+	else
+		return;
+
+	if (!otlv.load_from_yaml(yaml_config_path.c_str()))
+		m_show_error_dialog("There was an error while reading EEPROM config file.");
+
+	for (auto tlv: otlv.TEXT_TLV) {
+		char otlv_string[2048];
+		if (otlv.get_string_record(tlv, otlv_string))
+			m_update_row(tlv, otlv_string);
+	}
+
+	for (auto tlv: otlv.NUMERIC_TLV) {
+		uint32_t otlv_number;
+		if (otlv.get_numeric_record(tlv, &otlv_number))
+			m_update_row(tlv, std::to_string(otlv_number));
+	}
+
+	char otlv_mac[255];
+	if (otlv.get_mac_record(otlv_mac))
+		m_update_row(TLV_CODE_MAC_BASE, otlv_mac);
 }
 
 void

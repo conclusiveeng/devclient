@@ -5,7 +5,7 @@
 1. Install the needed prerequisites:
 
 ```
-sudo apt-get install build-essential cmake libgtkmm-3.0-dev libftdipp1-dev libtool
+sudo apt-get install build-essential cmake libgtkmm-3.0-dev libftdipp1-dev libtool yaml-cpp-dev
 ```
 
 2. Build:
