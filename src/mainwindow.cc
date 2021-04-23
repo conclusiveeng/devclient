@@ -777,7 +777,7 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 	m_clear.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::clear_clicked));
 }
 
-void EepromTLVTab::add_tlv_row(uint32_t id, std::string name, std::string value)
+void EepromTLVTab::add_tlv_row(tlv_code_t id, std::string name, std::string value)
 {
 	auto row = *(m_list_store_ref->append());
 	row[m_model_columns.m_id] = id;
@@ -785,7 +785,7 @@ void EepromTLVTab::add_tlv_row(uint32_t id, std::string name, std::string value)
 	row[m_model_columns.m_value] = value;
 }
 
-void EepromTLVTab::update_tlv_row(uint32_t id, std::string value)
+void EepromTLVTab::update_tlv_row(tlv_code_t id, std::string value)
 {
 	for (auto row: m_list_store_ref->children())
 		if (row.get_value(m_model_columns.m_id) == id) {
@@ -841,21 +841,9 @@ EepromTLVTab::load_clicked()
 	if (!otlv.load_from_yaml(yaml_config_path.c_str()))
 		show_centered_dialog("Error EEPROM TLV ", "There was an error while reading EEPROM config file.");
 
-	for (auto tlv: otlv.TEXT_TLV) {
-		char otlv_string[2048];
-		if (otlv.get_string_record(tlv, otlv_string))
-			update_tlv_row(tlv, otlv_string);
+	for (const auto tlv_id: otlv.ALL_TLV_ID) {
+		update_tlv_row(tlv_id, otlv.get_tlv_record(tlv_id).value_or(std::string("")));
 	}
-
-	for (auto tlv: otlv.NUMERIC_TLV) {
-		uint32_t otlv_number;
-		if (otlv.get_numeric_record(tlv, &otlv_number))
-			update_tlv_row(tlv, std::to_string(otlv_number));
-	}
-
-	char otlv_mac[255];
-	if (otlv.get_mac_record(otlv_mac))
-		update_tlv_row(TLV_CODE_MAC_BASE, otlv_mac);
 }
 
 void
@@ -866,7 +854,7 @@ EepromTLVTab::write_clicked()
 	for (auto row: m_list_store_ref->children())
 	{
 		int parsed_number;
-		uint8_t field_id = row.get_value(m_model_columns.m_id);
+		tlv_code_t field_id = row.get_value(m_model_columns.m_id);
 		std::string field_value = row.get_value(m_model_columns.m_value);
 		switch (field_id) {
 			case TLV_CODE_DEV_VERSION:
@@ -934,21 +922,9 @@ EepromTLVTab::read_clicked()
 		return;
 	}
 
-	for (auto tlv: otlv.TEXT_TLV) {
-		char otlv_string[2048];
-		if (otlv.get_string_record(tlv, otlv_string))
-			update_tlv_row(tlv, otlv_string);
+	for (const auto tlv_id: otlv.ALL_TLV_ID) {
+		update_tlv_row(tlv_id, otlv.get_tlv_record(tlv_id).value_or(std::string("")));
 	}
-
-	for (auto tlv: otlv.NUMERIC_TLV) {
-		uint32_t otlv_number;
-		if (otlv.get_numeric_record(tlv, &otlv_number))
-			update_tlv_row(tlv, std::to_string(otlv_number));
-	}
-
-	char otlv_mac[255];
-	if (otlv.get_mac_record(otlv_mac))
-		update_tlv_row(TLV_CODE_MAC_BASE, otlv_mac);
 }
 
 void

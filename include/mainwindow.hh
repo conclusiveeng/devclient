@@ -186,7 +186,7 @@ protected:
 	public:
 		ModelColumns() {add(m_id); add(m_name); add(m_value);}
 
-		Gtk::TreeModelColumn<uint32_t> m_id;
+		Gtk::TreeModelColumn<tlv_code_t> m_id;
 		Gtk::TreeModelColumn<std::string> m_name;
 		Gtk::TreeModelColumn<std::string> m_value;
 	};
@@ -208,8 +208,8 @@ protected:
 	void read_clicked();
 	void write_clicked();
 	void clear_clicked();
-	void add_tlv_row(uint32_t id, std::string name, std::string value);
-	void update_tlv_row(uint32_t id, std::string value);
+	void add_tlv_row(tlv_code_t id, std::string name, std::string value);
+	void update_tlv_row(tlv_code_t id, std::string value);
 	int validate_user_number(std::string text_number, int min, int max, std::string field_name);
 
 };

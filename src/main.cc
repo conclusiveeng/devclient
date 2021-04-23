@@ -480,23 +480,9 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 			Logger::error("There was an error while reading EEPROM.");
 			exit(-1);
 		}
-
-		for (auto tlv: otlv.TEXT_TLV) {
-			char otlv_string[2048];
-			if (otlv.get_string_record(tlv, otlv_string))
-				std::cout << fmt::format("Field id: [0x{:x}] Value: [{}]\n", tlv, otlv_string);
+		for (const auto tlv_id: otlv.ALL_TLV_ID) {
+			std::cout << fmt::format("Field id: [0x{:x}] Value: [{}]\n", tlv_id, otlv.get_tlv_record(tlv_id).value_or(""));
 		}
-
-		for (auto tlv: otlv.NUMERIC_TLV) {
-			uint32_t otlv_number;
-			if (otlv.get_numeric_record(tlv, &otlv_number))
-				std::cout << fmt::format("Field id: [0x{:x}] Value: [{}]\n", tlv, otlv_number);
-		}
-
-		char otlv_mac[255];
-		if (otlv.get_mac_record(otlv_mac))
-			std::cout << fmt::format("Field id: [0x{:x}] Value: [{}]\n", TLV_CODE_MAC_BASE, otlv_mac);
-
 		exit(0);
 	}
 

@@ -69,57 +69,65 @@ struct TLVRecord {
  * TLV types
  * List of TLV code identifiers with length.
  */
-#define TLV_CODE_RESERVED       0x00    /* None */
-#define TLV_CODE_PRODUCT_NAME   0x21    /* Variable */
-#define TLV_CODE_PART_NUMBER    0x22    /* Variable */
-#define TLV_CODE_SERIAL_NUMBER  0x23    /* Variable */
-#define TLV_CODE_MAC_BASE       0x24    /* 6 bytes */
-#define TLV_CODE_MANUF_DATE     0x25   /* 19 bytes */
-#define TLV_CODE_DEV_VERSION    0x26    /* 1 byte */
-#define TLV_CODE_LABEL_REVISION 0x27    /* Variable */
-#define TLV_CODE_PLATFORM_NAME  0x28    /* Variable */
-#define TLV_CODE_ONIE_VERSION   0x29    /* Variable */
-#define TLV_CODE_NUM_MACs       0x2A    /* 2 bytes */
-#define TLV_CODE_MANUF_NAME     0x2B    /* Variable */
-#define TLV_CODE_COUNTRY_CODE   0x2C    /* 2 bytes */
-#define TLV_CODE_VENDOR_NAME    0x2D    /* Variable */
-#define TLV_CODE_DIAG_VERSION   0x2E    /* Variable */
-#define TLV_CODE_SERVICE_TAG    0x2F    /* Variable */
-#define TLV_CODE_VENDOR_EXT     0xFD    /* Variable */
-#define TLV_CODE_CRC_32         0xFE    /* 4 bytes */
-#define TLV_CODE_RESERVED_1     0xFF    /* None */
+typedef enum TLVCode {
+	TLV_CODE_RESERVED = 0x00,           /* None */
+	TLV_CODE_PRODUCT_NAME = 0x21,       /* Variable */
+	TLV_CODE_PART_NUMBER = 0x22,        /* Variable */
+	TLV_CODE_SERIAL_NUMBER = 0x23,      /* Variable */
+	TLV_CODE_MAC_BASE = 0x24,           /* 6 bytes */
+	TLV_CODE_MANUF_DATE = 0x25,         /* 19 bytes */
+	TLV_CODE_DEV_VERSION = 0x26,        /* 1 byte */
+	TLV_CODE_LABEL_REVISION = 0x27,     /* Variable */
+	TLV_CODE_PLATFORM_NAME = 0x28,      /* Variable */
+	TLV_CODE_ONIE_VERSION  = 0x29,      /* Variable */
+	TLV_CODE_NUM_MACs = 0x2A,           /* 2 bytes */
+	TLV_CODE_MANUF_NAME = 0x2B,         /* Variable */
+	TLV_CODE_COUNTRY_CODE = 0x2C,       /* 2 bytes */
+	TLV_CODE_VENDOR_NAME =  0x2D,       /* Variable */
+	TLV_CODE_DIAG_VERSION = 0x2E,       /* Variable */
+	TLV_CODE_SERVICE_TAG = 0x2F,        /* Variable */
+	TLV_CODE_VENDOR_EXT = 0xFD,         /* Variable */
+	TLV_CODE_CRC_32 = 0xFE,             /* 4 bytes */
+	TLV_CODE_RESERVED_1 = 0xFF,         /* None */
+} tlv_code_t;
+
+
 
 class OnieTLV {
 public:
 	OnieTLV();
 	~OnieTLV();
 
-	bool save_user_tlv(uint8_t tlv_code, const char* value);
+	bool save_user_tlv(tlv_code_t tlv_id, const char* value);
 	bool generate_eeprom_file(uint8_t eeprom[2048]);
 	bool load_eeprom_file(const uint8_t *eeprom);
-	bool get_string_record(const uint8_t id, char *tlv_string);
-	bool get_numeric_record(const uint8_t id, uint32_t *tlv_number);
-	bool get_mac_record(char *tlv_mac);
+	std::optional<std::string> get_tlv_record(const tlv_code_t tlv_id);
+	
 	size_t get_usage();
 	bool validate_mac_address(const char *mac_address);
 	bool validate_date(const char *value);
 	bool load_from_yaml(const char *filename);
 
-	static constexpr uint8_t NUMERIC_TLV[] = {TLV_CODE_NUM_MACs, TLV_CODE_DEV_VERSION};
-	static constexpr uint8_t TEXT_TLV[] = {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
+	static constexpr tlv_code_t NUMERIC_TLV[] = {TLV_CODE_NUM_MACs, TLV_CODE_DEV_VERSION};
+	static constexpr tlv_code_t TEXT_TLV[] = {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
 										TLV_CODE_LABEL_REVISION, TLV_CODE_PLATFORM_NAME, TLV_CODE_ONIE_VERSION,
 										TLV_CODE_MANUF_NAME, TLV_CODE_COUNTRY_CODE, TLV_CODE_VENDOR_NAME,
 										TLV_CODE_DIAG_VERSION, TLV_CODE_SERVICE_TAG, TLV_CODE_VENDOR_EXT};
+	static constexpr tlv_code_t ALL_TLV_ID[] =  {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
+	                                             TLV_CODE_LABEL_REVISION, TLV_CODE_PLATFORM_NAME, TLV_CODE_ONIE_VERSION,
+	                                             TLV_CODE_NUM_MACs, TLV_CODE_MANUF_NAME, TLV_CODE_DEV_VERSION,
+	                                             TLV_CODE_COUNTRY_CODE, TLV_CODE_VENDOR_NAME, TLV_CODE_DIAG_VERSION,
+	                                             TLV_CODE_SERVICE_TAG};
 
 private:
 	std::vector<TLVRecord> tlv_records;
-	std::map<std::string, uint8_t > yaml_map;
+	std::map<std::string, tlv_code_t> yaml_map;
 	uint32_t eeprom_tlv_crc32_generated;
 	uint16_t usage;
 	std::string board_name;
 	std::string revision;
 
-	TLVRecord * find_record_or_nullptr(uint8_t id);
+	TLVRecord * find_record_or_nullptr(tlv_code_t tlv_id);
 	void update_records(TLVRecord& rec);
 	bool is_eeprom_valid(uint32_t crc32);
 	int set_mac_address(const char *value, uint8_t *mac_address);

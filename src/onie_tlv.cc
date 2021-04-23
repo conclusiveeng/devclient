@@ -164,7 +164,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
 		record.type = record_raw->type;
 		record.data_length = record_raw->length;
 		record.data.assign(reinterpret_cast<char *>(record_raw->value), record.data_length);
-		Logger::debug("Type {} Len: {}", record.type, record.data_length);
+		Logger::debug("Type 0x{:x} Len: {}", record.type, record.data_length);
 		update_records(record);
 
 		eeprom_read_ptr += RECORD_SIZE + record.data_length;
@@ -242,7 +242,7 @@ bool OnieTLV::generate_eeprom_file(uint8_t *eeprom)
 	return true;
 }
 
-bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value)
+bool OnieTLV::save_user_tlv(tlv_code_t tlv_code, const char *value)
 {
 	std::pair<std::string, size_t> tlv_value;
 	TLVRecord new_record;
@@ -332,13 +332,14 @@ bool OnieTLV::save_user_tlv(uint8_t tlv_code, const char *value)
 	return true;
 }
 
-bool OnieTLV::get_string_record(const uint8_t id, char *tlv_string)
-{
-	TLVRecord *record;
-	if (!tlv_string)
-		return false;
+std::optional<std::string> OnieTLV::get_tlv_record(const tlv_code_t tlv_id) {
+	TLVRecord *record = find_record_or_nullptr(tlv_id);
+	if (!record) {
+		Logger::error("Field tlv_id 0x{:x} was not found!", tlv_id);
+		return {};
+	}
 
-	switch (id) {
+	switch (tlv_id) {
 		case TLV_CODE_PRODUCT_NAME:
 		case TLV_CODE_PART_NUMBER:
 		case TLV_CODE_SERIAL_NUMBER:
@@ -352,41 +353,29 @@ bool OnieTLV::get_string_record(const uint8_t id, char *tlv_string)
 		case TLV_CODE_VENDOR_EXT:
 		case TLV_CODE_COUNTRY_CODE:
 		case TLV_CODE_MANUF_DATE:
-			record = find_record_or_nullptr(id);
-			if (!record) {
-				Logger::error("Field id {} was not found!", id);
-				return false;
-			}
-			strncpy(tlv_string, record->data.c_str(), record->data_length);
-			tlv_string[record->data_length] = '\0';
-	}
-	return true;
-}
-
-bool OnieTLV::get_numeric_record(const uint8_t id, uint32_t *tlv_value)
-{
-	TLVRecord *record;
-	if (!tlv_value)
-		return false;
-
-	if ((id == TLV_CODE_NUM_MACs || id == TLV_CODE_DEV_VERSION) == 0)
-		return false;
-
-	record = find_record_or_nullptr(id);
-	if (!record) {
-		Logger::error("Field id {} was not found!", id);
-		return false;
+			return record->data.substr(0, TLV_EEPROM_VALUE_MAX_SIZE);
+		case TLV_CODE_DEV_VERSION:
+			return std::to_string((uint8_t)record->data.c_str()[0]);
+		case TLV_CODE_NUM_MACs: {
+			uint16_t eeprom_num_mac;
+			memcpy(&eeprom_num_mac, record->data.c_str(), record->data_length);
+			return std::to_string(ntohs(eeprom_num_mac));
+		}
+		case TLV_CODE_MAC_BASE: {
+			const char *mac = record->data.c_str();
+			return fmt::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", mac[0]&0xFF, mac[1]&0xFF, mac[2]&0xFF,
+					mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
+		}
+		case TLV_CODE_RESERVED:
+		case TLV_CODE_RESERVED_1:
+			Logger::warning("Reading resevred field 0x{:x} is not allowed!", tlv_id);
+			return {};
+		case TLV_CODE_CRC_32:
+			Logger::warning("Reading crc field 0x{:x} should not be done.", tlv_id);
+			return {};
 	}
 
-	if (record->type == TLV_CODE_DEV_VERSION) {
-		*tlv_value = (uint8_t)record->data.c_str()[0];
-	} else {
-		uint16_t eeprom_num_mac;
-		memcpy(&eeprom_num_mac, record->data.c_str(), record->data_length);
-		*tlv_value = ntohs(eeprom_num_mac);
-	}
-
-	return true;
+	return {};
 }
 
 size_t OnieTLV::get_usage()
@@ -394,27 +383,9 @@ size_t OnieTLV::get_usage()
 	return usage;
 }
 
-bool OnieTLV::get_mac_record(char *tlv_mac)
+TLVRecord *OnieTLV::find_record_or_nullptr(tlv_code_t tlv_id)
 {
-	TLVRecord *record;
-	if (!tlv_mac)
-		return false;
-
-	record = find_record_or_nullptr(TLV_CODE_MAC_BASE);
-	if (!record) {
-		Logger::error("Field id {} was not found!", TLV_CODE_MAC_BASE);
-		return false;
-	}
-
-	const char *mac = record->data.c_str();
-	sprintf(tlv_mac, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0]&0xFF, mac[1]&0xFF,
-			mac[2]&0xFF, mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
-	return true;
-}
-
-TLVRecord *OnieTLV::find_record_or_nullptr(uint8_t id)
-{
-	auto is_selected_id = [id](TLVRecord rec){ return rec.type == id; };
+	auto is_selected_id = [tlv_id](TLVRecord rec){ return rec.type == tlv_id; };
 
 	auto found_record = std::find_if(std::begin(tlv_records), std::end(tlv_records), is_selected_id);
 	if (found_record != std::end(tlv_records))
@@ -464,7 +435,7 @@ bool OnieTLV::load_from_yaml(const char *filename) {
 		return false;
 	}
 
-	int tlv_id;
+	tlv_code_t tlv_id;
 	for (YAML::const_iterator it=config["eeprom"].begin();it!=config["eeprom"].end();++it) {
 		YAML::Node node = *it;
 		if (!node["name"] || !node["value"])
