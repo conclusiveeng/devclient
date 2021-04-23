@@ -181,6 +181,16 @@ public:
 	EepromTLVTab(MainWindow *parent);
 
 protected:
+	class ModelColumns : public Gtk::TreeModel::ColumnRecord
+	{
+	public:
+		ModelColumns() {add(m_id); add(m_name); add(m_value);}
+
+		Gtk::TreeModelColumn<uint32_t> m_id;
+		Gtk::TreeModelColumn<std::string> m_name;
+		Gtk::TreeModelColumn<std::string> m_value;
+	};
+
 	Gtk::ScrolledWindow m_scroll;
 	Gtk::ButtonBox m_buttons;
 	Gtk::Button m_load;
@@ -190,76 +200,18 @@ protected:
 	MainWindow *m_parent;
 	Glib::RefPtr<Gtk::ListStore> m_list_store_ref;
 	Gtk::TreeView m_tlv_records;
-	OnieTLV otlv;
 	std::shared_ptr<std::vector<uint8_t>> m_blob;
+	OnieTLV otlv;
+	ModelColumns m_model_columns;
 
 	void load_clicked();
 	void read_clicked();
 	void write_clicked();
 	void clear_clicked();
+	void add_tlv_row(uint32_t id, std::string name, std::string value);
+	void update_tlv_row(uint32_t id, std::string value);
+	int validate_user_number(std::string text_number, int min, int max, std::string field_name);
 
-	class ModelColumns : public Gtk::TreeModel::ColumnRecord
-	{
-		public:
-		ModelColumns() {add(m_id); add(m_name); add(m_value);}
-
-		Gtk::TreeModelColumn<uint32_t> m_id;
-		Gtk::TreeModelColumn<Glib::ustring> m_name;
-		Gtk::TreeModelColumn<Glib::ustring> m_value;
-	};
-
-	ModelColumns m_model_columns;
-
-	void m_add_row(uint32_t id, Glib::ustring name, Glib::ustring value)
-	{
-		auto row = *(m_list_store_ref->append());
-		row[m_model_columns.m_id] = id;
-		row[m_model_columns.m_name] = name;
-		row[m_model_columns.m_value] = value;
-	}
-
-	void m_update_row(uint32_t id, Glib::ustring value)
-	{
-		for (auto row: m_list_store_ref->children())
-			if (row.get_value(m_model_columns.m_id) == id) {
-				row[m_model_columns.m_value] = value;
-				break;
-			}
-	}
-
-	void m_show_error_dialog(Glib::ustring text) {
-		Gtk::MessageDialog *error_dialog = new Gtk::MessageDialog(text, false, Gtk::MessageType::MESSAGE_ERROR);
-		error_dialog->set_title("Error EEPROM TLV ");
-		error_dialog->run();
-		delete error_dialog;
-	}
-
-	int m_parse_user_number(Glib::ustring text_number, int min, int max, Glib::ustring field_name) {
-		int parsed_number = -1;
-		auto validate_if_numeric = [](auto text) {
-			for (size_t i = 0; i < text.length(); i++)
-				if (Glib::Unicode::isdigit(text[i]) == false)
-					return false;
-			return true;
-		};
-
-		if (text_number.empty())
-			return parsed_number;
-
-		if (validate_if_numeric(text_number)) {
-			try {
-				parsed_number = std::stoi(text_number.raw());
-			} catch (const std::exception& e) {
-				parsed_number = -1;
-			}
-		}
-		if (parsed_number < min || parsed_number > max) {
-			const auto text = Glib::ustring::sprintf("ERROR: %s cannot be smaller than %d or higher than %d.\n"
-											"Data will not be saved.", field_name, min, max);
-			m_show_error_dialog(text);
-		}
-		return parsed_number;
-	};
 };
 
 class GpioTab: public Gtk::Box

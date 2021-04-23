@@ -742,21 +742,21 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 	m_tlv_records.append_column("Name", m_model_columns.m_name);
 	m_tlv_records.append_column_editable("Value", m_model_columns.m_value);
 
-	m_add_row(TLV_CODE_PRODUCT_NAME, "Product name", "set-me-sample-name");
-	m_add_row(TLV_CODE_PART_NUMBER, "Part number", "");
-	m_add_row(TLV_CODE_SERIAL_NUMBER, "Serial number", "000000");
-	m_add_row(TLV_CODE_MAC_BASE, "MAC", "70:B3:D5:B9:D0:00");
-	m_add_row(TLV_CODE_MANUF_DATE, "Manufacture date", "01/01/2021 12:00:01");
-	m_add_row(TLV_CODE_DEV_VERSION, "Device version", "1");
-	m_add_row(TLV_CODE_LABEL_REVISION, "Label revision", "");
-	m_add_row(TLV_CODE_PLATFORM_NAME, "Platform name", "");
-	m_add_row(TLV_CODE_ONIE_VERSION, "ONIE version", "1");
-	m_add_row(TLV_CODE_NUM_MACs, "Number MACs", "1");
-	m_add_row(TLV_CODE_MANUF_NAME, "Manufacturer", "Conclusive Engineering");
-	m_add_row(TLV_CODE_COUNTRY_CODE, "Country code", "PL");
-	m_add_row(TLV_CODE_VENDOR_NAME, "Vendor", "");
-	m_add_row(TLV_CODE_DIAG_VERSION, "Diag Version", "");
-	m_add_row(TLV_CODE_SERVICE_TAG, "Service tag", "");
+	add_tlv_row(TLV_CODE_PRODUCT_NAME, "Product name", "set-me-sample-name");
+	add_tlv_row(TLV_CODE_PART_NUMBER, "Part number", "");
+	add_tlv_row(TLV_CODE_SERIAL_NUMBER, "Serial number", "000000");
+	add_tlv_row(TLV_CODE_MAC_BASE, "MAC", "70:B3:D5:B9:D0:00");
+	add_tlv_row(TLV_CODE_MANUF_DATE, "Manufacture date", "01/01/2021 12:00:01");
+	add_tlv_row(TLV_CODE_DEV_VERSION, "Device version", "1");
+	add_tlv_row(TLV_CODE_LABEL_REVISION, "Label revision", "");
+	add_tlv_row(TLV_CODE_PLATFORM_NAME, "Platform name", "");
+	add_tlv_row(TLV_CODE_ONIE_VERSION, "ONIE version", "1");
+	add_tlv_row(TLV_CODE_NUM_MACs, "Number MACs", "1");
+	add_tlv_row(TLV_CODE_MANUF_NAME, "Manufacturer", "Conclusive Engineering");
+	add_tlv_row(TLV_CODE_COUNTRY_CODE, "Country code", "PL");
+	add_tlv_row(TLV_CODE_VENDOR_NAME, "Vendor", "");
+	add_tlv_row(TLV_CODE_DIAG_VERSION, "Diag Version", "");
+	add_tlv_row(TLV_CODE_SERVICE_TAG, "Service tag", "");
 
 	m_scroll.add(m_tlv_records);
 
@@ -777,6 +777,51 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 	m_clear.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::clear_clicked));
 }
 
+void EepromTLVTab::add_tlv_row(uint32_t id, std::string name, std::string value)
+{
+	auto row = *(m_list_store_ref->append());
+	row[m_model_columns.m_id] = id;
+	row[m_model_columns.m_name] = name;
+	row[m_model_columns.m_value] = value;
+}
+
+void EepromTLVTab::update_tlv_row(uint32_t id, std::string value)
+{
+	for (auto row: m_list_store_ref->children())
+		if (row.get_value(m_model_columns.m_id) == id) {
+			row[m_model_columns.m_value] = value;
+			break;
+		}
+}
+
+int EepromTLVTab::validate_user_number(std::string text_number, int min, int max, std::string field_name) {
+	int parsed_number = -1;
+	auto validate_if_numeric = [](auto text) {
+		for (size_t i = 0; i < text.length(); i++)
+			if (Glib::Unicode::isdigit(text[i]) == false)
+				return false;
+		return true;
+	};
+
+	if (text_number.empty())
+		return parsed_number;
+
+	if (validate_if_numeric(text_number)) {
+		try {
+			parsed_number = std::stoi(text_number);
+		} catch (const std::exception& e) {
+			parsed_number = -1;
+		}
+	}
+	if (parsed_number < min || parsed_number > max) {
+		const auto text = fmt::format("ERROR: {} cannot be smaller than {} or higher than {}.\n"
+		                              "Data will not be saved.", field_name, min, max);
+		show_centered_dialog("Error EEPROM TLV ", text);
+		parsed_number = -1;
+	}
+	return parsed_number;
+};
+
 void
 EepromTLVTab::load_clicked()
 {
@@ -794,23 +839,23 @@ EepromTLVTab::load_clicked()
 		return;
 
 	if (!otlv.load_from_yaml(yaml_config_path.c_str()))
-		m_show_error_dialog("There was an error while reading EEPROM config file.");
+		show_centered_dialog("Error EEPROM TLV ", "There was an error while reading EEPROM config file.");
 
 	for (auto tlv: otlv.TEXT_TLV) {
 		char otlv_string[2048];
 		if (otlv.get_string_record(tlv, otlv_string))
-			m_update_row(tlv, otlv_string);
+			update_tlv_row(tlv, otlv_string);
 	}
 
 	for (auto tlv: otlv.NUMERIC_TLV) {
 		uint32_t otlv_number;
 		if (otlv.get_numeric_record(tlv, &otlv_number))
-			m_update_row(tlv, std::to_string(otlv_number));
+			update_tlv_row(tlv, std::to_string(otlv_number));
 	}
 
 	char otlv_mac[255];
 	if (otlv.get_mac_record(otlv_mac))
-		m_update_row(TLV_CODE_MAC_BASE, otlv_mac);
+		update_tlv_row(TLV_CODE_MAC_BASE, otlv_mac);
 }
 
 void
@@ -822,23 +867,23 @@ EepromTLVTab::write_clicked()
 	{
 		int parsed_number;
 		uint8_t field_id = row.get_value(m_model_columns.m_id);
-		Glib::ustring field_value = row.get_value(m_model_columns.m_value);
+		std::string field_value = row.get_value(m_model_columns.m_value);
 		switch (field_id) {
 			case TLV_CODE_DEV_VERSION:
-				parsed_number = m_parse_user_number(field_value, 0, 255, "Device version");
+				parsed_number = validate_user_number(field_value, 0, 255, "Device version");
 				if (parsed_number == -1)
 					return;
 				otlv.save_user_tlv(field_id, std::to_string(parsed_number).c_str());
 			break;
 			case TLV_CODE_NUM_MACs:
-				parsed_number = m_parse_user_number(field_value, 1, 65535, "MAC number");
+				parsed_number = validate_user_number(field_value, 1, 65535, "MAC number");
 				if (parsed_number == -1)
 					return;
 				otlv.save_user_tlv(field_id, std::to_string(parsed_number).c_str());
 			break;
 			case TLV_CODE_COUNTRY_CODE:
 				if (field_value.length() != 2) {
-					m_show_error_dialog("ERROR: Country code must 2 characters only. Example: PL.\n"
+					show_centered_dialog("Error EEPROM TLV ", "ERROR: Country code must 2 characters only. Example: PL.\n"
 						 "Data will not be saved.");
 					return;
 				}
@@ -847,7 +892,7 @@ EepromTLVTab::write_clicked()
 			case TLV_CODE_MANUF_DATE:
 				field_value = field_value.substr(0,19);
 				if (!otlv.validate_date(field_value.c_str())) {
-					m_show_error_dialog("ERROR: Invalid date vale. Required format is: MM/DD/YYYY hh:mm:ss.\n"
+					show_centered_dialog("Error EEPROM TLV ", "ERROR: Invalid date vale. Required format is: MM/DD/YYYY hh:mm:ss.\n"
 						 "Data will not be saved.");
 					return;
 				}
@@ -856,8 +901,8 @@ EepromTLVTab::write_clicked()
 			case TLV_CODE_MAC_BASE:
 				field_value = field_value.substr(0,17);
 				if (!otlv.validate_mac_address(field_value.c_str())) {
-					m_show_error_dialog("ERROR: Invalid MAC address. Required format is: xx:xx:xx:xx:xx.\n"
-						 "Data will not be saved.");
+					show_centered_dialog("Error EEPROM TLV ", "ERROR: Invalid MAC address."
+											   "Required format is: xx:xx:xx:xx:xx.\nData will not be saved.");
 					return;
 				}
 				otlv.save_user_tlv(field_id, field_value.c_str());
@@ -885,25 +930,25 @@ EepromTLVTab::read_clicked()
 		eeprom.read(0, 2048, *m_blob);
 		otlv.load_eeprom_file(m_blob->data());
 	} catch (const std::runtime_error &err) {
-		m_show_error_dialog("Error while trying to read EEPROM.");
+		show_centered_dialog("Error EEPROM TLV ", "Error while trying to read EEPROM.");
 		return;
 	}
 
 	for (auto tlv: otlv.TEXT_TLV) {
 		char otlv_string[2048];
 		if (otlv.get_string_record(tlv, otlv_string))
-			m_update_row(tlv, otlv_string);
+			update_tlv_row(tlv, otlv_string);
 	}
 
 	for (auto tlv: otlv.NUMERIC_TLV) {
 		uint32_t otlv_number;
 		if (otlv.get_numeric_record(tlv, &otlv_number))
-			m_update_row(tlv, std::to_string(otlv_number));
+			update_tlv_row(tlv, std::to_string(otlv_number));
 	}
 
 	char otlv_mac[255];
 	if (otlv.get_mac_record(otlv_mac))
-		m_update_row(TLV_CODE_MAC_BASE, otlv_mac);
+		update_tlv_row(TLV_CODE_MAC_BASE, otlv_mac);
 }
 
 void
