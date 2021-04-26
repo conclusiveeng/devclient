@@ -94,8 +94,8 @@ typedef enum TLVCode {
 class OnieTLVException : public std::exception {
 	std::string error_msg;
 public:
-	OnieTLVException(std::string msg) : std::exception(), error_msg(msg)
-	{
+	OnieTLVException(const std::string& msg) : std::exception() {
+		error_msg = msg;
 	}
 
 	const char* what() const throw () {
@@ -113,20 +113,21 @@ public:
 	OnieTLV();
 	~OnieTLV();
 
-	bool save_user_tlv(tlv_code_t tlv_id, std::string value) noexcept(false);
-	bool generate_eeprom_file(uint8_t eeprom[2048]);
-	bool load_eeprom_file(const uint8_t *eeprom);
 	std::optional<std::string> get_tlv_record(const tlv_code_t tlv_id);
-	
+	void save_user_tlv(tlv_code_t tlv_id, const std::string& value) noexcept(false);
+	bool generate_eeprom_file(uint8_t eeprom[2048]);
+	bool load_from_eeprom(const uint8_t *eeprom);
+	void load_from_yaml(const std::string& filename);
 	size_t get_usage();
-	bool load_from_yaml(std::string filename);
 
-	static constexpr tlv_code_t ALL_TLV_ID[] =  {TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
-	                                             TLV_CODE_MAC_BASE, TLV_CODE_MANUF_DATE, TLV_CODE_DEV_VERSION,
-	                                             TLV_CODE_LABEL_REVISION, TLV_CODE_PLATFORM_NAME,
-	                                             TLV_CODE_ONIE_VERSION, TLV_CODE_NUM_MACs, TLV_CODE_MANUF_NAME,
-	                                             TLV_CODE_COUNTRY_CODE, TLV_CODE_VENDOR_NAME, TLV_CODE_DIAG_VERSION,
-	                                             TLV_CODE_SERVICE_TAG, TLV_CODE_VENDOR_EXT};
+	static constexpr tlv_code_t ALL_TLV_ID[] = {
+			TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
+			TLV_CODE_MAC_BASE, TLV_CODE_MANUF_DATE, TLV_CODE_DEV_VERSION,
+			TLV_CODE_LABEL_REVISION, TLV_CODE_PLATFORM_NAME,
+			TLV_CODE_ONIE_VERSION, TLV_CODE_NUM_MACs, TLV_CODE_MANUF_NAME,
+			TLV_CODE_COUNTRY_CODE, TLV_CODE_VENDOR_NAME, TLV_CODE_DIAG_VERSION,
+			TLV_CODE_SERVICE_TAG, TLV_CODE_VENDOR_EXT
+	};
 private:
 	std::vector<TLVRecord> tlv_records;
 	std::map<std::string, tlv_code_t> yaml_map;
@@ -138,11 +139,11 @@ private:
 	TLVRecord * find_record_or_nullptr(tlv_code_t tlv_id);
 	void update_records(TLVRecord& rec);
 	bool is_eeprom_valid(uint32_t crc32);
-	int parse_number(std::string text_number, int min, int max) noexcept(false);
-	void parse_mac_address(std::string mac_text, uint8_t *mac_address) noexcept(false);
-	bool validate_mac_address(std::string mac_address)noexcept(false);
-	void validate_date(std::string date_value) noexcept(false);
-	void validate_text(std::string text, size_t len) noexcept(false);
+	int parse_number(const std::string& text_number, int min, int max) noexcept(false);
+	void parse_mac_address(const std::string& mac_text, uint8_t *mac_address) noexcept(false);
+	bool validate_mac_address(const std::string&  mac_address) noexcept(false);
+	void validate_date(const std::string& date_value) noexcept(false);
+	void validate_text(const std::string& text, size_t len) noexcept(false);
 };
 
 #endif //DEVCLIENT_ONIE_TLV_H

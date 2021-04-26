@@ -454,9 +454,10 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 		OnieTLV otlv;
 		uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
 
-		if (otlv.load_from_yaml(file_read.c_str()) == false) {
-			std::cout << file_read.c_str() << "\n";
-			Logger::error("There was a problem with loading EEPROM config file.");
+		try {
+			otlv.load_from_yaml(file_read);
+		} catch (OnieTLVException& onieTLVException) {
+			Logger::error("There was a problem with loading EEPROM config file.\n{}", onieTLVException.get_info());
 			exit(-1);
 		}
 
@@ -474,8 +475,8 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 		OnieTLV otlv;
 
 		try {
-			eeprom.read(0, 2048, data);
-			otlv.load_eeprom_file(data.data());
+			eeprom.read(0, TLV_EEPROM_MAX_SIZE, data);
+			otlv.load_from_eeprom(data.data());
 		} catch (const std::runtime_error &err) {
 			Logger::error("There was an error while reading EEPROM.");
 			exit(-1);

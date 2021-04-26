@@ -811,8 +811,14 @@ EepromTLVTab::load_clicked()
 	else
 		return;
 
-	if (!otlv.load_from_yaml(yaml_config_path.c_str()))
-		show_centered_dialog("Error EEPROM TLV ", "There was an error while reading EEPROM config file.");
+	try {
+		otlv.load_from_yaml(yaml_config_path.c_str());
+	} catch (OnieTLVException& onieTLVException) {
+		show_centered_dialog("Error EEPROM TLV ",
+				fmt::format("There was an error while reading EEPROM config file.\n{}",
+						onieTLVException.get_info()));
+		return;
+	}
 
 	for (const auto tlv_id: otlv.ALL_TLV_ID) {
 		update_tlv_row(tlv_id, otlv.get_tlv_record(tlv_id).value_or(std::string("")));
@@ -908,7 +914,7 @@ EepromTLVTab::read_clicked()
 	m_blob = std::make_shared<std::vector<uint8_t>>();
 	try {
 		eeprom.read(0, 2048, *m_blob);
-		otlv.load_eeprom_file(m_blob->data());
+		otlv.load_from_eeprom(m_blob->data());
 	} catch (const std::runtime_error &err) {
 		show_centered_dialog("Error EEPROM TLV ", "Error while trying to read EEPROM.");
 		return;

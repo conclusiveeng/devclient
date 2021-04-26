@@ -68,7 +68,7 @@ OnieTLV::~OnieTLV()
 
 }
 
-void OnieTLV::validate_date(std::string date_value)
+void OnieTLV::validate_date(const std::string& date_value)
 {
 	struct tm tm;
 
@@ -79,13 +79,13 @@ void OnieTLV::validate_date(std::string date_value)
 		throw OnieTLVException("Bad date. Check if date is valid.");
 }
 
-void OnieTLV::validate_text(std::string text, size_t len)
+void OnieTLV::validate_text(const std::string& text, size_t len)
 {
 	if (text.length() > len)
 		throw OnieTLVException(fmt::format("Field value cannot be longer than {}", len));
 }
 
-bool OnieTLV::validate_mac_address(std::string mac_address)
+bool OnieTLV::validate_mac_address(const std::string& mac_address)
 {
 	int ret;
 	int mac_bytes[6];
@@ -111,7 +111,7 @@ bool OnieTLV::validate_mac_address(std::string mac_address)
 	return true;
 }
 
-void OnieTLV::parse_mac_address(std::string mac_text, uint8_t *mac_address)
+void OnieTLV::parse_mac_address(const std::string& mac_text, uint8_t *mac_address)
 {
 	int mac_bytes[6];
 
@@ -126,7 +126,7 @@ void OnieTLV::parse_mac_address(std::string mac_text, uint8_t *mac_address)
 		mac_address[i] = mac_bytes[i];
 }
 
-int OnieTLV::parse_number(std::string text_number, int min, int max)
+int OnieTLV::parse_number(const std::string& text_number, int min, int max)
 {
 	int parsed_number = -1;
 	std::string::const_iterator it = text_number.begin();
@@ -159,7 +159,7 @@ bool OnieTLV::is_eeprom_valid(uint32_t crc32)
 	return false;
 }
 
-bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
+bool OnieTLV::load_from_eeprom(const uint8_t *eeprom)
 {
 	struct tlv_header_raw *record_header;
 	uint32_t crc_eeprom;
@@ -183,7 +183,7 @@ bool OnieTLV::load_eeprom_file(const uint8_t *eeprom)
 	// Convert total length from big endian
 	total_bytes_eeprom = ntohs(record_header->total_length) + HEADER_SIZE;
 	total_bytes_eeprom = (total_bytes_eeprom > TLV_EEPROM_MAX_SIZE)?TLV_EEPROM_MAX_SIZE:total_bytes_eeprom;
-	Logger::info("load_eeprom_file, length : [{}]", total_bytes_eeprom);
+	Logger::info("load_from_eeprom, length : [{}]", total_bytes_eeprom);
 
 	while (read_bytes < total_bytes_eeprom) {
 		TLVRecord record;
@@ -270,7 +270,7 @@ bool OnieTLV::generate_eeprom_file(uint8_t *eeprom)
 	return true;
 }
 
-bool OnieTLV::save_user_tlv(tlv_code_t tlv_id, std::string value)
+void OnieTLV::save_user_tlv(tlv_code_t tlv_id, const std::string& value)
 {
 	switch (tlv_id) {
 		case TLV_CODE_PRODUCT_NAME:
@@ -326,8 +326,8 @@ bool OnieTLV::save_user_tlv(tlv_code_t tlv_id, std::string value)
 		}
 		case TLV_CODE_MAC_BASE: {
 			TLVRecord new_record;
-			// MAC address is saved as 6 bytes without any additional characters. MAC address must be checked
-			// if it's not all zeros or if it's not broadcast address.
+			// MAC address is saved as 6 bytes without any additional characters
+			// MAC address must be checked if it's not all zeros or if it's not broadcast address.
 			uint8_t mac_address[6];
 			parse_mac_address(value, mac_address);
 			new_record.type = tlv_id;
@@ -353,8 +353,6 @@ bool OnieTLV::save_user_tlv(tlv_code_t tlv_id, std::string value)
 			// Any other type is wrong type
 			throw OnieTLVException(fmt::format("Invalid field set 0x{:x} = {}", tlv_id, value));
 	}
-
-	return true;
 }
 
 std::optional<std::string> OnieTLV::get_tlv_record(const tlv_code_t tlv_id) {
@@ -389,7 +387,7 @@ std::optional<std::string> OnieTLV::get_tlv_record(const tlv_code_t tlv_id) {
 		case TLV_CODE_MAC_BASE: {
 			char mac_text[20];
 			const char *mac = record->data.c_str();
-			/* libfmt formatter cannot be used here, as it skips leading zeros while printing hex */
+			// libfmt formatter cannot be used here, as it skips leading zeros while printing hex
 			sprintf(mac_text, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0]&0xFF, mac[1]&0xFF, mac[2]&0xFF,
 					mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
 			return std::string(mac_text);
@@ -434,34 +432,33 @@ void OnieTLV::update_records(TLVRecord& rec)
 	tlv_records.push_back(rec);
 };
 
-bool OnieTLV::load_from_yaml(std::string filename) {
+void OnieTLV::load_from_yaml(const std::string& filename) {
 	YAML::Node config;
 	try {
 		config = YAML::LoadFile(filename);
 	}
 	catch (const YAML::BadFile& badFile) {
-		Logger::error("Error while reading file.");
+		throw OnieTLVException("Cannot read EEPROM configuration file.");
+	}
+	catch (const YAML::ParserException& parserException) {
+		throw OnieTLVException("EEPROM configuration file has bad format.");
 	}
 
 	if (config["board-name"]) {
 		board_name = config["board-name"].as<std::string>();
 		Logger::debug("Reading YAML config. Board name: {}", board_name);
 	} else {
-		Logger::error("EEPROM configuration file doesn't have board name. Abort reading.");
-		return false;
+		throw OnieTLVException("EEPROM configuration file doesn't have board name.");
 	}
 	if (config["rev"]) {
 		revision = config["rev"].as<std::string>();
 		Logger::debug("Reading YAML config. Revision: {}", revision);
 	} else {
-		Logger::error("EEPROM configuration file doesn't have revision. Abort reading.");
-		return false;
+		throw OnieTLVException("EEPROM configuration file doesn't have revision.");
 	}
 
-	if (!config["eeprom"]){
-		Logger::error("EEPROM configuration file doesn't have eeeprom section. Abort reading.");
-		return false;
-	}
+	if (!config["eeprom"])
+		throw OnieTLVException("EEPROM configuration file doesn't have eeeprom section.");
 
 	tlv_code_t tlv_id;
 	for (YAML::const_iterator it=config["eeprom"].begin();it!=config["eeprom"].end();++it) {
@@ -482,5 +479,4 @@ bool OnieTLV::load_from_yaml(std::string filename) {
 					node["name"].as<std::string>(), exception.get_info());
 		}
 	}
-	return true;
 }
