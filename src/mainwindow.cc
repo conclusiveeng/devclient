@@ -787,40 +787,13 @@ void EepromTLVTab::add_tlv_row(tlv_code_t id, std::string name, std::string valu
 
 void EepromTLVTab::update_tlv_row(tlv_code_t id, std::string value)
 {
-	for (auto row: m_list_store_ref->children())
-		if (row.get_value(m_model_columns.m_id) == id) {
+	for (auto row: m_list_store_ref->children()) {
+		if (row.get_value(m_model_columns.m_id)==id) {
 			row[m_model_columns.m_value] = value;
 			break;
 		}
+	}
 }
-
-int EepromTLVTab::validate_user_number(std::string text_number, int min, int max, std::string field_name) {
-	int parsed_number = -1;
-	auto validate_if_numeric = [](auto text) {
-		for (size_t i = 0; i < text.length(); i++)
-			if (Glib::Unicode::isdigit(text[i]) == false)
-				return false;
-		return true;
-	};
-
-	if (text_number.empty())
-		return parsed_number;
-
-	if (validate_if_numeric(text_number)) {
-		try {
-			parsed_number = std::stoi(text_number);
-		} catch (const std::exception& e) {
-			parsed_number = -1;
-		}
-	}
-	if (parsed_number < min || parsed_number > max) {
-		const auto text = fmt::format("ERROR: {} cannot be smaller than {} or higher than {}.\n"
-		                              "Data will not be saved.", field_name, min, max);
-		show_centered_dialog("Error EEPROM TLV ", text);
-		parsed_number = -1;
-	}
-	return parsed_number;
-};
 
 void
 EepromTLVTab::load_clicked()
@@ -853,53 +826,72 @@ EepromTLVTab::write_clicked()
 
 	for (auto row: m_list_store_ref->children())
 	{
-		int parsed_number;
-		tlv_code_t field_id = row.get_value(m_model_columns.m_id);
+		tlv_code_t tlv_id = row.get_value(m_model_columns.m_id);
 		std::string field_value = row.get_value(m_model_columns.m_value);
-		switch (field_id) {
+		switch (tlv_id) {
 			case TLV_CODE_DEV_VERSION:
-				parsed_number = validate_user_number(field_value, 0, 255, "Device version");
-				if (parsed_number == -1)
-					return;
-				otlv.save_user_tlv(field_id, std::to_string(parsed_number).c_str());
-			break;
-			case TLV_CODE_NUM_MACs:
-				parsed_number = validate_user_number(field_value, 1, 65535, "MAC number");
-				if (parsed_number == -1)
-					return;
-				otlv.save_user_tlv(field_id, std::to_string(parsed_number).c_str());
-			break;
-			case TLV_CODE_COUNTRY_CODE:
-				if (field_value.length() != 2) {
-					show_centered_dialog("Error EEPROM TLV ", "ERROR: Country code must 2 characters only. Example: PL.\n"
-						 "Data will not be saved.");
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Wrong value for filed id: 0x{:x} = 'device version'.\n{}",
+									TLV_CODE_DEV_VERSION, onieTLVException.get_info()));
 					return;
 				}
-				otlv.save_user_tlv(field_id, field_value.substr(0,2).c_str());
+				break;
+			case TLV_CODE_NUM_MACs:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Wrong value for filed id: 0x{:x} = 'mac number'.\n{}",
+									TLV_CODE_NUM_MACs, onieTLVException.get_info()));
+					return;
+				}
+				break;
+			case TLV_CODE_COUNTRY_CODE:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Country code (0x{:x}) must 2 characters only."
+				   "Example: PL.\n{}", TLV_CODE_COUNTRY_CODE, onieTLVException.get_info()));
+					return;
+				}
 				break;
 			case TLV_CODE_MANUF_DATE:
-				field_value = field_value.substr(0,19);
-				if (!otlv.validate_date(field_value.c_str())) {
-					show_centered_dialog("Error EEPROM TLV ", "ERROR: Invalid date vale. Required format is: MM/DD/YYYY hh:mm:ss.\n"
-						 "Data will not be saved.");
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Invalid date field (0x{:x})."
+				   "Required format is: MM/DD/YYYY hh:mm:ss.\n{}", TLV_CODE_COUNTRY_CODE, onieTLVException.get_info()));
 					return;
 				}
-				otlv.save_user_tlv(field_id, field_value.c_str());
 				break;
 			case TLV_CODE_MAC_BASE:
-				field_value = field_value.substr(0,17);
-				if (!otlv.validate_mac_address(field_value.c_str())) {
-					show_centered_dialog("Error EEPROM TLV ", "ERROR: Invalid MAC address."
-											   "Required format is: xx:xx:xx:xx:xx.\nData will not be saved.");
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Wrong value for field id: 0x{:x} = 'mac adress'.\n{}",
+									TLV_CODE_MAC_BASE, onieTLVException.get_info()));
 					return;
 				}
-				otlv.save_user_tlv(field_id, field_value.c_str());
 				break;
 			default:
-				if (!field_value.empty())
-					otlv.save_user_tlv(field_id, field_value.substr(0,TLV_EEPROM_VALUE_MAX_SIZE-1).c_str());
+				if (!field_value.empty()) {
+					try {
+						otlv.save_user_tlv(tlv_id, field_value);
+					} catch (OnieTLVException &onieTLVException) {
+						show_centered_dialog("Error EEPROM TLV", fmt::format("ERROR: Wrong value for field id: 0x{:x}\n{}",
+								tlv_id, onieTLVException.get_info()));
+						return;
+					}
+				} else {
+					Logger::debug("Skipping field id 0x{:x} because it's empty", tlv_id);
+				}
 		}
-//		Logger::debug("Filed id {} value: {}", field_id, field_value);
 	}
 
 	otlv.generate_eeprom_file(eeprom_file);

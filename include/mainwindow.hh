@@ -210,7 +210,6 @@ protected:
 	void clear_clicked();
 	void add_tlv_row(tlv_code_t id, std::string name, std::string value);
 	void update_tlv_row(tlv_code_t id, std::string value);
-	int validate_user_number(std::string text_number, int min, int max, std::string field_name);
 
 };
 

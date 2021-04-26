@@ -68,59 +68,87 @@ OnieTLV::~OnieTLV()
 
 }
 
-bool OnieTLV::validate_date(const char *value)
+void OnieTLV::validate_date(std::string date_value)
 {
 	struct tm tm;
 
-	if (!value || strlen(value) != 19) {
-		Logger::error("Bad date format. Should be MM/DD/YYYY hh:mm:ss");
-		return false;
-	}
+	if (date_value.length() != 19)
+		throw OnieTLVException("Bad date format. Should be MM/DD/YYYY hh:mm:ss");
 
-	if (!strptime(value, "%m/%d/%Y %H:%M:%S", &tm))
-		return false;
-
-	return true;
+	if (!strptime(date_value.c_str(), "%m/%d/%Y %H:%M:%S", &tm))
+		throw OnieTLVException("Bad date. Check if date is valid.");
 }
 
-bool OnieTLV::validate_mac_address(const char *mac_address)
+void OnieTLV::validate_text(std::string text, size_t len)
+{
+	if (text.length() > len)
+		throw OnieTLVException(fmt::format("Field value cannot be longer than {}", len));
+}
+
+bool OnieTLV::validate_mac_address(std::string mac_address)
 {
 	int ret;
 	int mac_bytes[6];
 
-	if (!mac_address || (strlen(mac_address) != 17)) {
+	if (mac_address.length() != 17) {
 		Logger::error("Bad MAC address format. Should be xx:xx:xx:xx:xx");
-		return -1;
-	}
-
-	ret = std::sscanf(mac_address, "%02x:%02x:%02x:%02x:%02x:%02x",
-			&mac_bytes[0], &mac_bytes[1], &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]);
-	if (ret != 6)
 		return false;
-
-	if ((mac_bytes[0] | mac_bytes[1] | mac_bytes[2] | mac_bytes[3] | mac_bytes[4] | mac_bytes[5]) == 0)
+	}
+	ret = std::sscanf(mac_address.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x",
+			&mac_bytes[0], &mac_bytes[1], &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]);
+	if (ret != 6) {
+		Logger::error("Bad MAC address format. sscanf failed.");
+		return false;
+	}
+	if ((mac_bytes[0] | mac_bytes[1] | mac_bytes[2] | mac_bytes[3] | mac_bytes[4] | mac_bytes[5]) == 0) {
+		Logger::error("MAC address is all 0.");
 		return false;  // MAC address cannot be 00:00:00:00:00:00
-
-	if (0x01 & mac_bytes[0])
+	}
+	if (0x01 & mac_bytes[0]) {
+		Logger::error("MAC address is multicast.");
 		return false;  // MAC address cannot be multicast
-
+	}
 	return true;
 }
 
-int OnieTLV::set_mac_address(const char *value, uint8_t *mac_address)
+void OnieTLV::parse_mac_address(std::string mac_text, uint8_t *mac_address)
 {
 	int mac_bytes[6];
 
-	if (!validate_mac_address(value))
-		return -1;
+	if (!validate_mac_address(mac_text)) {
+		throw OnieTLVException("Invalid MAC address. Required format is: xx:xx:xx:xx:xx.");
+	}
 
-	std::sscanf(value, "%02x:%02x:%02x:%02x:%02x:%02x",
+	std::sscanf(mac_text.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x",
 			&mac_bytes[0], &mac_bytes[1], &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]);
 
 	for (int i=0; i < 6; i++)
 		mac_address[i] = mac_bytes[i];
+}
 
-	return 0;
+int OnieTLV::parse_number(std::string text_number, int min, int max)
+{
+	int parsed_number = -1;
+	std::string::const_iterator it = text_number.begin();
+	while (it != text_number.end() && std::isdigit(*it)) ++it;
+	bool is_ok = !text_number.empty() && it == text_number.end();
+
+	if (is_ok) {
+		try {
+			parsed_number = std::stoi(text_number);
+		} catch (std::invalid_argument& invalidArgument) {
+			throw OnieTLVException("Cannot convert number. Check if number is positive integer.");
+		}
+		catch (std::out_of_range& ofRange) {
+			throw OnieTLVException("Cannot convert number. Number is out of range.");
+		}
+	}
+
+	if (!is_ok || parsed_number < min || parsed_number > max) {
+		throw OnieTLVException(fmt::format("Number value cannot be smaller than {} or higher than {}.", min, max));
+	}
+
+	return parsed_number;
 }
 
 bool OnieTLV::is_eeprom_valid(uint32_t crc32)
@@ -242,11 +270,9 @@ bool OnieTLV::generate_eeprom_file(uint8_t *eeprom)
 	return true;
 }
 
-bool OnieTLV::save_user_tlv(tlv_code_t tlv_code, const char *value)
+bool OnieTLV::save_user_tlv(tlv_code_t tlv_id, std::string value)
 {
-	std::pair<std::string, size_t> tlv_value;
-	TLVRecord new_record;
-	switch (tlv_code) {
+	switch (tlv_id) {
 		case TLV_CODE_PRODUCT_NAME:
 		case TLV_CODE_PART_NUMBER:
 		case TLV_CODE_SERIAL_NUMBER:
@@ -257,76 +283,75 @@ bool OnieTLV::save_user_tlv(tlv_code_t tlv_code, const char *value)
 		case TLV_CODE_VENDOR_NAME:
 		case TLV_CODE_DIAG_VERSION:
 		case TLV_CODE_SERVICE_TAG:
-		case TLV_CODE_VENDOR_EXT:
+		case TLV_CODE_VENDOR_EXT: {
+			TLVRecord new_record;
 			// For all text based fields just copy the text to EEPROM
-			new_record.type = tlv_code;
-			new_record.data_length = strlen(value);
-			new_record.data.assign(value, new_record.data_length);
-
+			validate_text(value, TLV_EEPROM_VALUE_MAX_SIZE);
+			new_record.type = tlv_id;
+			new_record.data_length = value.length();
+			new_record.data = value;
 			update_records(new_record);
 			break;
-		case TLV_CODE_DEV_VERSION:
+		}
+		case TLV_CODE_DEV_VERSION: {
+			TLVRecord new_record;
 			// Device version is just single byte
-			int num_version;
-			new_record.type = tlv_code;
+			int num_version = parse_number(value, 0, 255);
+			new_record.type = tlv_id;
 			new_record.data_length = 1;
-			num_version = std::stoi(value);
 			new_record.data.assign(reinterpret_cast<char *>(&num_version), new_record.data_length);
-
 			update_records(new_record);
 			break;
-		case TLV_CODE_NUM_MACs:
-			// Number on following MAC addresses (2 bytes)
-			uint32_t num_mac;
-			uint16_t num_mac_eeprom;
-			new_record.type = tlv_code;
+		}
+		case TLV_CODE_NUM_MACs: {
+			TLVRecord new_record;
+			// Number num_mac following MAC addresses (2 bytes)
+			uint32_t num_mac = parse_number(value, 0, 65535);
+			uint16_t num_mac_eeprom = htons(num_mac);
+			new_record.type = tlv_id;
 			new_record.data_length = 2;
-			num_mac = strtol(value, NULL, 0);
-			num_mac_eeprom = htons(num_mac);
 			new_record.data.assign(reinterpret_cast<char *>(&num_mac_eeprom), new_record.data_length);
-
 			update_records(new_record);
 			break;
-		case TLV_CODE_COUNTRY_CODE:
+		}
+		case TLV_CODE_COUNTRY_CODE: {
+			TLVRecord new_record;
 			// Country code is just a string limited to 2 bytes
-			new_record.type = tlv_code;
+			validate_text(value, 2);
+			new_record.type = tlv_id;
 			new_record.data_length = 2;
-			new_record.data.assign(value, new_record.data_length);
-
+			new_record.data = value;
 			update_records(new_record);
 			break;
-		case TLV_CODE_CRC_32:
-			// This field is computed before write to EEPROM cannot be set.
-			return false;
-		case TLV_CODE_MAC_BASE:
+		}
+		case TLV_CODE_MAC_BASE: {
+			TLVRecord new_record;
 			// MAC address is saved as 6 bytes without any additional characters. MAC address must be checked
 			// if it's not all zeros or if it's not broadcast address.
 			uint8_t mac_address[6];
-			if (set_mac_address(value, mac_address) < 0) {
-				std::cout << "Bad mac address format!\n";
-				break;
-			}
-			new_record.type = tlv_code;
+			parse_mac_address(value, mac_address);
+			new_record.type = tlv_id;
 			new_record.data_length = 6;
-			new_record.data.assign(reinterpret_cast<char *>(mac_address), new_record.data_length);
-
+			new_record.data.assign(reinterpret_cast<const char *>(mac_address), new_record.data_length);
 			update_records(new_record);
 			break;
-		case TLV_CODE_MANUF_DATE:
+		}
+		case TLV_CODE_MANUF_DATE: {
+			TLVRecord new_record;
 			// Manufacture date must be in format MM/DD/YYYY hh:mm:ss it's stored in this format in EEPROM
-			if (!validate_date(value)) {
-				std::cout << "Bad date format!\n";
-				break;
-			}
-			new_record.type = tlv_code;
+			validate_date(value);
+			new_record.type = tlv_id;
 			new_record.data_length = 19;
-			new_record.data.assign(value, new_record.data_length);
-
+			new_record.data = value;
 			update_records(new_record);
 			break;
+		}
+		case TLV_CODE_CRC_32:
+			// This field is computed before write to EEPROM cannot be set.
+			throw OnieTLVException("CRC field cannot be set!");
 		default:
 			// Any other type is wrong type
-			return false;
+			throw OnieTLVException(fmt::format("Invalid field set 0x{:x} = {}", tlv_id, value));
 	}
 
 	return true;
@@ -353,7 +378,7 @@ std::optional<std::string> OnieTLV::get_tlv_record(const tlv_code_t tlv_id) {
 		case TLV_CODE_VENDOR_EXT:
 		case TLV_CODE_COUNTRY_CODE:
 		case TLV_CODE_MANUF_DATE:
-			return record->data.substr(0, TLV_EEPROM_VALUE_MAX_SIZE);
+			return record->data;
 		case TLV_CODE_DEV_VERSION:
 			return std::to_string((uint8_t)record->data.c_str()[0]);
 		case TLV_CODE_NUM_MACs: {
@@ -362,13 +387,16 @@ std::optional<std::string> OnieTLV::get_tlv_record(const tlv_code_t tlv_id) {
 			return std::to_string(ntohs(eeprom_num_mac));
 		}
 		case TLV_CODE_MAC_BASE: {
+			char mac_text[20];
 			const char *mac = record->data.c_str();
-			return fmt::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", mac[0]&0xFF, mac[1]&0xFF, mac[2]&0xFF,
+			/* libfmt formatter cannot be used here, as it skips leading zeros while printing hex */
+			sprintf(mac_text, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0]&0xFF, mac[1]&0xFF, mac[2]&0xFF,
 					mac[3]&0xFF, mac[4]&0xFF, mac[5]&0xFF);
+			return std::string(mac_text);
 		}
 		case TLV_CODE_RESERVED:
 		case TLV_CODE_RESERVED_1:
-			Logger::warning("Reading resevred field 0x{:x} is not allowed!", tlv_id);
+			Logger::warning("Reading reserved field 0x{:x} is not allowed!", tlv_id);
 			return {};
 		case TLV_CODE_CRC_32:
 			Logger::warning("Reading crc field 0x{:x} should not be done.", tlv_id);
@@ -406,7 +434,7 @@ void OnieTLV::update_records(TLVRecord& rec)
 	tlv_records.push_back(rec);
 };
 
-bool OnieTLV::load_from_yaml(const char *filename) {
+bool OnieTLV::load_from_yaml(std::string filename) {
 	YAML::Node config;
 	try {
 		config = YAML::LoadFile(filename);
@@ -447,7 +475,12 @@ bool OnieTLV::load_from_yaml(const char *filename) {
 			continue;
 		}
 
-		save_user_tlv(tlv_id, node["value"].as<std::string>().c_str());
+		try {
+			save_user_tlv(tlv_id, node["value"].as<std::string>());
+		} catch (OnieTLVException& exception) {
+			Logger::error("Error while parsing field id 0x{:x} = '{}'. Info: {}", tlv_id,
+					node["name"].as<std::string>(), exception.get_info());
+		}
 	}
 	return true;
 }
