@@ -4,7 +4,7 @@ stages:
 devclient:
   stage: build
   tags:
-    - ubuntu
+    - wiesia
 
   script:
     - mkdir build && cd build
