@@ -11,13 +11,13 @@ add_subdirectory(contrib/fmt-6.0.0)
 add_subdirectory(contrib/filesystem-1.2.10)
 add_subdirectory(contrib/libucl)
 
-find_package(PkgConfig)
+find_package(PkgConfig REQUIRED)
 find_package(Boost)
-find_package(yaml-cpp)
 
 pkg_check_modules(GTKMM gtkmm-3.0)
 pkg_check_modules(GIOMM giomm-2.4)
 pkg_check_modules(LIBFTDI libftdipp1)
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
 
 link_directories(${GTKMM_LIBRARY_DIRS})
 link_directories(${LIBFTDI_LIBRARY_DIRS})
@@ -28,7 +28,7 @@ include_directories(${LIBFTDI_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/filesystem-1.2.10/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/libucl/include)
-include_directories(${YAML_CPP_INCLUDE_DIRS})
+include_directories(${YAML_CPP_INCLUDEDIR})
 include_directories(include)
 
 add_executable(devclient
