@@ -31,6 +31,8 @@
 
 #include <optional>
 #include <vector>
+#include <stdint.h>
+#include <string>
 
 struct Device
 {
