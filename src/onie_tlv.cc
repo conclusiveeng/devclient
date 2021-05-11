@@ -409,6 +409,11 @@ size_t OnieTLV::get_usage()
 	return usage;
 }
 
+std::string OnieTLV::get_eeprom_address_from_yaml()
+{
+	return eeprom_address;
+}
+
 TLVRecord *OnieTLV::find_record_or_nullptr(tlv_code_t tlv_id)
 {
 	auto is_selected_id = [tlv_id](TLVRecord rec){ return rec.type == tlv_id; };
@@ -455,6 +460,12 @@ void OnieTLV::load_from_yaml(const std::string& filename) {
 		Logger::debug("Reading YAML config. Revision: {}", revision);
 	} else {
 		throw OnieTLVException("EEPROM configuration file doesn't have revision.");
+	}
+	if (config["address"]) {
+		eeprom_address = config["address"].as<std::string>();
+		Logger::debug("Reading YAML config. EEPROM address: {}", eeprom_address);
+	} else {
+		throw OnieTLVException("EEPROM configuration file doesn't have board name.");
 	}
 
 	if (!config["eeprom"])

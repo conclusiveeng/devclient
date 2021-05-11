@@ -119,6 +119,7 @@ public:
 	bool load_from_eeprom(const uint8_t *eeprom);
 	void load_from_yaml(const std::string& filename);
 	size_t get_usage();
+	std::string get_eeprom_address_from_yaml();
 
 	static constexpr tlv_code_t ALL_TLV_ID[] = {
 			TLV_CODE_PRODUCT_NAME, TLV_CODE_PART_NUMBER, TLV_CODE_SERIAL_NUMBER,
@@ -135,6 +136,7 @@ private:
 	uint16_t usage;
 	std::string board_name;
 	std::string revision;
+	std::string eeprom_address;
 
 	TLVRecord * find_record_or_nullptr(tlv_code_t tlv_id);
 	void update_records(TLVRecord& rec);

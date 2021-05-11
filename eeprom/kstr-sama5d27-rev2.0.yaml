@@ -1,5 +1,6 @@
 board-name: kstr-sama5d27
 rev: 2.0
+address: 0x50
 eeprom:
     -
         name: product-name
