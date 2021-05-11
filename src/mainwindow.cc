@@ -38,6 +38,8 @@
 #include <mainwindow.hh>
 #include <application.hh>
 #include <ucl.h>
+#include <eeprom.hh>
+#include <log.hh>
 
 
 #if __cplusplus <= 201703L
@@ -735,6 +737,13 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 {
 	Pango::FontDescription font("Monospace 9");
 
+	m_addr_label.set_label("EEPROM address: ");
+	for (auto const& addr: Eeprom::eeprom_addrs)
+		m_combo_addr.append(addr.first);
+	m_combo_addr.set_active(0);
+	m_paned.add1(m_addr_label);
+	m_paned.add2(m_combo_addr);
+
 	m_list_store_ref = Gtk::ListStore::create(m_model_columns);
 	m_tlv_records.set_model(m_list_store_ref);
 
@@ -768,6 +777,7 @@ EepromTLVTab::EepromTLVTab(MainWindow *parent):
 	m_buttons.pack_start(m_clear);
 
 	set_border_width(5);
+	pack_start(m_paned, false, false);
 	pack_start(m_scroll, true, true);
 	pack_start(m_buttons, false, true);
 
@@ -903,6 +913,7 @@ EepromTLVTab::write_clicked()
 	otlv.generate_eeprom_file(eeprom_file);
 	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+otlv.get_usage());
 	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.set_address(m_combo_addr.get_active_text());
 	eeprom.write(0, *m_blob);
 }
 
@@ -910,6 +921,7 @@ void
 EepromTLVTab::read_clicked()
 {
 	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.set_address(m_combo_addr.get_active_text());
 
 	m_blob = std::make_shared<std::vector<uint8_t>>();
 	try {
@@ -932,6 +944,7 @@ EepromTLVTab::clear_clicked()
 	memset(eeprom_file, '0', TLV_EEPROM_MAX_SIZE);
 	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+TLV_EEPROM_MAX_SIZE);
 	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.set_address(m_combo_addr.get_active_text());
 	eeprom.write(0, *m_blob);
 }
 

@@ -191,6 +191,8 @@ protected:
 		Gtk::TreeModelColumn<std::string> m_value;
 	};
 
+	Gtk::Label m_addr_label;
+	Gtk::HPaned m_paned;
 	Gtk::ScrolledWindow m_scroll;
 	Gtk::ButtonBox m_buttons;
 	Gtk::Button m_load;
@@ -203,6 +205,7 @@ protected:
 	std::shared_ptr<std::vector<uint8_t>> m_blob;
 	OnieTLV otlv;
 	ModelColumns m_model_columns;
+	Gtk::ComboBoxText m_combo_addr;
 
 	void load_clicked();
 	void read_clicked();
