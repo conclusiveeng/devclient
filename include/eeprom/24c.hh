@@ -30,12 +30,9 @@
 #define DEVCLIENT_24C_HH
 
 #include <stdint.h>
+#include <string>
 #include <vector>
-#include <log.hh>
 #include <eeprom.hh>
-
-#define EEPROM_24C_ADDRESS_RD	0xa1
-#define EEPROM_24C_ADDRESS_WR	0xa0
 
 class Eeprom24c: public Eeprom
 {
@@ -45,6 +42,7 @@ public:
 	void read(uint16_t offset, size_t length, std::vector<uint8_t> &data);
 	void write(uint16_t offset, const std::vector<uint8_t> &data);
 	void erase();
+	void set_address(std::string addr);
 };
 
 #endif /* DEVCLIENT_24C_HH */
