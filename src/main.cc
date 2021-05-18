@@ -29,7 +29,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <sysexits.h>
+// #include <sysexits.h>
 #include <getopt.h>
 #include <fmt/format.h>
 #include <gtkmm/application.h>
@@ -326,7 +326,8 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 			break;
 		default:
 			usage(argv[0]);
-			exit(EX_USAGE);
+			exit(-1);
+			// exit(EX_USAGE);
 		}
 	}
 

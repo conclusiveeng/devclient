@@ -51,8 +51,8 @@ public:
 protected:
 	void prepare_child();
 	void child_exited(Glib::Pid pid, int code);
-	void output_ready(Glib::RefPtr<Gio::AsyncResult> &result,
-	    Glib::RefPtr<Gio::UnixInputStream> stream);
+	void output_ready(Glib::RefPtr<Gio::AsyncResult> &result/*,
+	    Glib::RefPtr<Gio::UnixInputStream> stream*/);
 
 	const Device &m_device;
 	Glib::RefPtr<Gio::InetAddress> m_address;
@@ -60,8 +60,8 @@ protected:
 	uint16_t m_gdb_port;
 	std::string m_board_script;
 	Glib::Pid m_pid;
-	Glib::RefPtr<Gio::UnixInputStream> m_out;
-	Glib::RefPtr<Gio::UnixInputStream> m_err;
+	// Glib::RefPtr<Gio::UnixInputStream> m_out;
+	// Glib::RefPtr<Gio::UnixInputStream> m_err;
 	bool m_running;
 };
 

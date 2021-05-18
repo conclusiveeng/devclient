@@ -100,16 +100,16 @@ JtagServer::start()
 	    sigc::mem_fun(*this, &JtagServer::child_exited),
 	    m_pid);
 
-	m_out = Gio::UnixInputStream::create(stdout_fd, true);
-	m_err = Gio::UnixInputStream::create(stderr_fd, true);
+	// m_out = Gio::UnixInputStream::create(stdout_fd, true);
+	// m_err = Gio::UnixInputStream::create(stderr_fd, true);
 
-	m_out->read_bytes_async(BUFFER_SIZE, sigc::bind(sigc::mem_fun(
-	    *this, &JtagServer::output_ready), m_out));
+	// m_out->read_bytes_async(BUFFER_SIZE, sigc::bind(sigc::mem_fun(
+	//     *this, &JtagServer::output_ready), m_out));
 
-	m_err->read_bytes_async(BUFFER_SIZE, sigc::bind(sigc::mem_fun(
-	    *this, &JtagServer::output_ready), m_err));
+	// m_err->read_bytes_async(BUFFER_SIZE, sigc::bind(sigc::mem_fun(
+	//     *this, &JtagServer::output_ready), m_err));
 
-	setpgid(m_pid, getpid());
+	// setpgid(m_pid, getpid());
 
 	m_running = true;
 
@@ -122,7 +122,7 @@ JtagServer::stop()
 	if (!m_running)
 		return;
 
-	kill(m_pid, SIGTERM);
+	// kill(m_pid, SIGTERM);
 
 	/* Crappy, there should be a better way to do this */
 	while (m_running)
@@ -206,7 +206,7 @@ JtagServer::reset(const Device &device)
 		return;
 	}
 
-	usleep(1000 * 100);
+	// usleep(1000 * 100);
 
 	data = RESET_MASK;
 	if (context.write(&data, sizeof(data)) != sizeof(data)) {
@@ -232,24 +232,24 @@ JtagServer::prepare_child()
 }
 
 void
-JtagServer::output_ready(Glib::RefPtr<Gio::AsyncResult> &result,
-    Glib::RefPtr<Gio::UnixInputStream> stream)
+JtagServer::output_ready(Glib::RefPtr<Gio::AsyncResult> &result/*,
+    Glib::RefPtr<Gio::UnixInputStream> stream*/)
 {
-	Glib::RefPtr<Glib::Bytes> buffer;
-	const char *ptr;
-	size_t nread;
+	// Glib::RefPtr<Glib::Bytes> buffer;
+	// const char *ptr;
+	// size_t nread;
 
-	buffer = stream->read_bytes_finish(result);
-	if (buffer.get() == nullptr)
-		return;
+	// buffer = stream->read_bytes_finish(result);
+	// if (buffer.get() == nullptr)
+	// 	return;
 
-	ptr = static_cast<const char *>(buffer->get_data(nread));
-	if (nread == 0)
-		return;
+	// ptr = static_cast<const char *>(buffer->get_data(nread));
+	// if (nread == 0)
+	// 	return;
 
-	on_output_produced.emit(std::string(ptr, nread));
-	stream->read_bytes_async(BUFFER_SIZE, sigc::bind(sigc::mem_fun(
-	    *this, &JtagServer::output_ready), stream));
+	// on_output_produced.emit(std::string(ptr, nread));
+	// stream->read_bytes_async(BUFFER_SIZE, sigc::bind(sigc::mem_fun(
+	//     *this, &JtagServer::output_ready), stream));
 }
 
 void

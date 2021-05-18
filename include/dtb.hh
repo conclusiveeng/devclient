@@ -49,9 +49,9 @@ protected:
 	void error_ready(Glib::RefPtr<Gio::AsyncResult> &result);
 	void child_exited(Glib::Pid pid, int code);
 
-	Glib::RefPtr<Gio::UnixOutputStream> m_in;
-	Glib::RefPtr<Gio::UnixInputStream> m_out;
-	Glib::RefPtr<Gio::UnixInputStream> m_err;
+	// Glib::RefPtr<Gio::UnixOutputStream> m_in;
+	// Glib::RefPtr<Gio::UnixInputStream> m_out;
+	// Glib::RefPtr<Gio::UnixInputStream> m_err;
 	std::shared_ptr<std::vector<uint8_t>> m_dtb;
 	std::shared_ptr<std::string> m_dts;
 	std::string m_errors;

@@ -61,7 +61,7 @@ DeviceSelectDialog::DeviceSelectDialog():
 	get_content_area()->add(m_treeview);
 	get_action_area()->add(m_ok);
 	set_size_request(400, 300);
-	set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
+	// set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
 	show_all_children();
 }
 

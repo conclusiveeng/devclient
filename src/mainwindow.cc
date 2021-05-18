@@ -66,7 +66,7 @@ MainWindow::MainWindow():
 	m_notebook.append_page(m_gpio_tab, "GPIO");
 	add(m_notebook);
 
-	set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
+	// set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
 	show_all_children();
 	show_deviceselect_dialog();
 	
@@ -208,7 +208,7 @@ ProfileTab::clicked()
 	m_parent->set_gpio_name(3, ucl_object_tostring(name3));
 
 	/* show file name in profile tab */
-	m_entry.get_widget().set_text(filesystem::path(fname).filename().c_str());
+	//m_entry.get_widget().set_text(filesystem::path(fname).filename().c_str());
 }
 
 SerialTab::SerialTab(MainWindow *parent, const Device &dev):
@@ -313,34 +313,34 @@ SerialTab::stop_clicked()
 void
 SerialTab::launch_terminal_clicked()
 {
-#if defined(__APPLE__) && defined(__MACH__)
-	std::vector<std::string> argv {
-		"osascript",
-		"-e",
-		fmt::format(
-			"tell app \"Terminal\" to do script "
-   			"\"telnet 127.0.0.1 {}\"",
-   			m_port_row.get_widget().get_text())
-	};
-#elif defined(__unix__)
-	std::vector<std::string> argv {
-		"x-terminal-emulator",
-		"-e",
-		fmt::format(
-			"telnet 127.0.0.1 {}",
-			m_port_row.get_widget().get_text())
-	};
-#endif
+// #if defined(__APPLE__) && defined(__MACH__)
+// 	std::vector<std::string> argv {
+// 		"osascript",
+// 		"-e",
+// 		fmt::format(
+// 			"tell app \"Terminal\" to do script "
+//    			"\"telnet 127.0.0.1 {}\"",
+//    			m_port_row.get_widget().get_text())
+// 	};
+// #elif defined(__unix__)
+// 	std::vector<std::string> argv {
+// 		"x-terminal-emulator",
+// 		"-e",
+// 		fmt::format(
+// 			"telnet 127.0.0.1 {}",
+// 			m_port_row.get_widget().get_text())
+// 	};
+// #endif
 
-#if !defined(__APPLE__) && !defined(__unix__)
-	Gtk::MessageDialog dialog(
-		*this, "Error", false, Gtk::MESSAGE_WARNING, Gtk::BUTTONS_OK);
-	dialog.set_secondary_text(
-		"Launching a terminal is unimplemented for your platform.");
-	dialog.run();
-#else
-	Glib::spawn_async("/", argv, Glib::SpawnFlags::SPAWN_SEARCH_PATH);
-#endif
+// #if !defined(__APPLE__) && !defined(__unix__)
+// 	Gtk::MessageDialog dialog(
+// 		*this, "Error", false, Gtk::MESSAGE_WARNING, Gtk::BUTTONS_OK);
+// 	dialog.set_secondary_text(
+// 		"Launching a terminal is unimplemented for your platform.");
+// 	dialog.run();
+// #else
+// 	Glib::spawn_async("/", argv, Glib::SpawnFlags::SPAWN_SEARCH_PATH);
+// #endif
 }
 
 void

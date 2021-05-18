@@ -59,16 +59,17 @@ file(COPY scripts DESTINATION ${CMAKE_BINARY_DIR})
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tools)
 file(COPY icon.png DESTINATION ${CMAKE_BINARY_DIR})
 
-add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/openocd/config.log
-        COMMAND ./bootstrap nosubmodule
-        COMMAND ./configure --enable-target64 --enable-libftdi --prefix="" --disable-werror
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/openocd)
+# add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/openocd/config.log
+#         # COMMAND dos2unix.exe ./bootstrap
+#         COMMAND ./bootstrap nosubmodule
+#         COMMAND ./configure --enable-target64 --enable-libftdi --prefix="" --disable-werror
+#         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/openocd)
 
-add_custom_target(openocd ALL
-        DEPENDS ${CMAKE_BINARY_DIR}/openocd/config.log
-        COMMAND make -j4
-        COMMAND make install DESTDIR=${CMAKE_BINARY_DIR}/tools
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/openocd)
+# add_custom_target(openocd ALL
+#         DEPENDS ${CMAKE_BINARY_DIR}/openocd/config.log
+#         COMMAND make -j4
+#         COMMAND make install DESTDIR=${CMAKE_BINARY_DIR}/tools
+#         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/openocd)
 
 target_link_libraries(devclient
         ${GIOMM_LIBRARIES}

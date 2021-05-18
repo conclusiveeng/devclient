@@ -67,7 +67,7 @@ typedef kvec_t(ucl_object_t *) ucl_array_t;
 #include <fetch.h>
 #endif
 
-#if defined(_MSC_VER)
+// #if defined(_MSC_VER)
 #include <windows.h>
 #include <io.h>
 #include <direct.h>
@@ -91,9 +91,9 @@ typedef kvec_t(ucl_object_t *) ucl_array_t;
 #define MAP_FAILED      ((void *) -1)
 #endif
 
-#define getcwd _getcwd
-#define open _open
-#define close _close
+// #define getcwd _getcwd
+// #define open _open
+// #define close _close
 
 static void *ucl_mmap(char *addr, size_t length, int prot, int access, int fd, off_t offset)
 {
@@ -182,11 +182,11 @@ char *basename(char *path)
 
 	return path_buffer;
 }
-#else
-#define ucl_mmap mmap
-#define ucl_munmap munmap
-#define ucl_realpath realpath
-#endif
+// #else
+// #define ucl_mmap mmap
+// #define ucl_munmap munmap
+// #define ucl_realpath realpath
+// #endif
 
 typedef void (*ucl_object_dtor) (ucl_object_t *obj);
 static void ucl_object_free_internal (ucl_object_t *obj, bool allow_rec,
