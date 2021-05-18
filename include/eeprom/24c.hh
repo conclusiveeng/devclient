@@ -74,7 +74,7 @@ public:
 			m_i2c.write(slice);
 			m_i2c.stop();
 			offset += 32;
-			usleep(50000);
+			Glib::usleep(50000);
 		}
 	}
 
