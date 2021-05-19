@@ -37,16 +37,16 @@ Run `sudo kextunload -b com.FTDI.driver.FTDIUSBSerialDriver`
 ## Building and running on Windows
 
 1. Install MSYS2 according to the guide https://www.msys2.org/ . Follow steps from 1 to 8 (installation on mingw-w64-x86-64 compilers).
-2. Run MSYS2-MinGW64 terminal and install following packages:  pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-boost  mingw-w64-x86_64-gtkmm mingw-w64-x86_64-libftdi  mingw-w64-x86_64-gtkmm3
+2. Run MSYS2-MinGW64 terminal and install following packages:  pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-boost  mingw-w64-x86_64-gtkmm mingw-w64-x86_64-libftdi  mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-toolchain base-devel
 3. Download libftdi and build libftdipp package:
-
+   
     ```bash
     cd libftdi1-1.5
     mkdir build
     cd build
-    cmake .. -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX="../../libftdi" -DCMAKE_BUILD_TYPE=Release -DEXAMPLES=OFF -DPYTHON_BINDINGS=ON -DPYTHON_BINDINGS=ON -DLINK_PYTHON_LIBRARY=ON -DDOCUMENTATION=OFF -DFTDIPP=ON -DCMAKE_BUILD_TYPE=Release
-    make
-    make install
+    cmake .. -G"MinGW Makefiles" -DCMAKE_INSTALL_PREFIX="../../libftdi" -DEXAMPLES=OFF -DPYTHON_BINDINGS=OFF -DLINK_PYTHON_LIBRARY=OFF -DDOCUMENTATION=OFF -DFTDIPP=ON -DCMAKE_BUILD_TYPE=Release
+    mingw32-make.exe
+    mingw32-make.exe install
     ```
 
 4. Copy install directory content into 'C:\msys64\mingw64'
