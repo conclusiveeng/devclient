@@ -29,6 +29,7 @@
 #ifndef DEVCLIENT_MAINWINDOW_HH
 #define DEVCLIENT_MAINWINDOW_HH
 
+#include "ftdi.hpp"
 #include <gtkmm.h>
 #include <formrow.hh>
 #include <uart.hh>
@@ -223,6 +224,9 @@ protected:
 	
 	void show_deviceselect_dialog();
 	void configure_devices(const Device &device);
+
+private:
+	Ftdi::Context m_context;
 };
 
 #endif /* DEVCLIENT_MAINWINDOW_HH */

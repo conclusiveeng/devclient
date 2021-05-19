@@ -37,6 +37,7 @@ class Gpio
 {
 public:
 	Gpio(const Device &device);
+	Gpio(const Ftdi::Context &context);
 	virtual ~Gpio();
 
 	uint8_t get_direction();

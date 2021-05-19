@@ -42,6 +42,7 @@ class I2C
 {
 public:
 	I2C(const Device &device, int clock);
+	I2C(const Ftdi::Context &context, int clock);
 	virtual ~I2C();
 
 	void start();

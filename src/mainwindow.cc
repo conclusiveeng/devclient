@@ -26,6 +26,8 @@
  *
  */
 
+#include "ftdi.h"
+#include "log.hh"
 #include <string>
 #include <cctype>
 #include <gtkmm/dialog.h>
@@ -68,7 +70,16 @@ MainWindow::MainWindow():
 
 	// set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
 	show_all_children();
-	show_deviceselect_dialog();
+	//show_deviceselect_dialog();
+
+	m_context.set_interface(INTERFACE_ANY);
+	if (m_context.open(0x0403, 0x6011) != 0) {
+		Logger::error("Cannot open USB device: '{}'",  m_context.error_string());
+	}
+
+	m_i2c = new I2C(m_context, 100000);
+	m_gpio = new Gpio(m_context);
+	m_gpio->set(0);
 	
 	m_gpio_tab.m_gpio = (std::shared_ptr<Gpio>) m_gpio;
 }
@@ -674,9 +685,12 @@ EepromTab::read_clicked()
 	m_dtb = std::make_shared<DTB>(m_textual, m_blob);
 
 	try {
-		eeprom.read(0, 4096, *m_blob);
-		m_dtb->decompile(sigc::mem_fun(*this,
-		    &EepromTab::decompile_done));
+		eeprom.read(0, 256, *m_blob);
+		for (int i=0; i<256; i++) {
+			Logger::debug("eeprom[{:3}] = 0x{:x}", i, m_blob->data()[i]);
+		}
+		// m_dtb->decompile(sigc::mem_fun(*this,
+		//     &EepromTab::decompile_done));
 	} catch (const std::runtime_error &err) {
 		Gtk::MessageDialog msg("Read error");
 

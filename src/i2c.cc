@@ -77,6 +77,47 @@ I2C::I2C(const Device &device, int clock)
 	m_context.write(cmd2, sizeof(cmd2));
 }
 
+I2C::I2C(const Ftdi::Context &context, int clock)
+{
+	const uint8_t sync[] = { 0xaa };
+	uint8_t rd[2];
+	const uint8_t cmd[] = {
+	    DIS_DIV_5,
+	    DIS_ADAPTIVE,
+	    DIS_3_PHASE,
+	    SET_BITS_LOW, SDA_OUT | SCL, OUT_PINS,
+	    TCK_DIVISOR, 0xc8, 0x00,
+	};
+	const uint8_t cmd2[] = {
+	    LOOPBACK_END,
+	    /* Tristate SDA and SCL pins */
+	    SET_BITS_LOW, 0, WP
+	};
+
+	m_context = context;
+	m_context.set_interface(INTERFACE_A);
+	// m_context.reset();
+
+	if (m_context.set_bitmode(0xff, BITMODE_RESET) != 0) 
+		throw std::runtime_error("Failed to set bitmode");
+
+	if (m_context.set_bitmode(0xff, BITMODE_MPSSE) != 0)
+		throw std::runtime_error("Failed to set bitmode");
+
+	m_context.write(sync, sizeof(sync));
+
+	for (;;) {
+		if (m_context.read(rd, sizeof(rd)) != sizeof(rd))
+			throw std::runtime_error("Failed to synchronize");
+
+		if (rd[0] == 0xfa && rd[1] == 0xaa)
+			break;
+	}
+
+	m_context.write(cmd, sizeof(cmd));
+	m_context.write(cmd2, sizeof(cmd2));
+}
+
 I2C::~I2C()
 {
 
@@ -86,13 +127,15 @@ void
 I2C::read(size_t nbytes, std::vector<uint8_t> &result)
 {
 	size_t i;
-	uint8_t rd;
+	uint8_t rd_data;
+
 
 	/*
 	 * Don't know why this is needed, but we're ending up with one
 	 * extra byte in front of the read buffer after read
 	 */
-	m_context.read(&rd, 1);
+	m_context.set_interface(INTERFACE_A);
+	m_context.read(&rd_data, 1);
 
 	for (i = 0; i < nbytes; i++)
 		result.push_back(read_byte(i != nbytes - 1));
@@ -125,6 +168,7 @@ I2C::start()
 	};
 
 	Logger::debug("I2C: start");
+	m_context.set_interface(INTERFACE_A);
 	m_context.write(cmd, sizeof(cmd));
 }
 
@@ -152,6 +196,7 @@ I2C::stop()
 	};
 
 	Logger::debug("I2C: stop");
+	m_context.set_interface(INTERFACE_A);
 	m_context.write(cmd, sizeof(cmd));
 	m_context.write(cmd2, sizeof(cmd2));
 }
@@ -170,6 +215,7 @@ I2C::read_byte(bool ack)
 	    SEND_IMMEDIATE
 	};
 
+	m_context.set_interface(INTERFACE_A);
 	m_context.write(cmd, sizeof(cmd));
 	m_context.read(&rd, 1);
 	return (rd);
@@ -189,6 +235,7 @@ I2C::write_byte(uint8_t byte)
 	    SET_BITS_LOW, 0, OUT_PINS
 	};
 
+	m_context.set_interface(INTERFACE_A);
 	m_context.write(cmd, sizeof(cmd));
 	m_context.read(&rd, 1);
 	m_context.write(cmd2, sizeof(cmd2));

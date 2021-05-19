@@ -46,6 +46,14 @@ Gpio::Gpio(const Device &device)
 	configure(0u);
 }
 
+Gpio::Gpio(const Ftdi::Context &context)
+{
+	m_context = context;
+	m_context.set_interface(INTERFACE_D);
+	// m_context.reset();
+	configure(0u);
+}
+
 Gpio::~Gpio()
 {
 	m_context.close();
