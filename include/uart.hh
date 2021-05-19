@@ -57,6 +57,8 @@ class Uart
 public:
 	Uart(const Device &device, const Glib::RefPtr<Gio::SocketAddress> &addr,
 	    int baudrate);
+	Uart(const Ftdi::Context &context, const Glib::RefPtr<Gio::SocketAddress> &addr,
+    int baudrate);
 	virtual ~Uart();
 	void start();
 	void stop();

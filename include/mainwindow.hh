@@ -203,6 +203,7 @@ public:
 
 	Gpio *m_gpio;
 	I2C *m_i2c;
+	Ftdi::Context m_context;
 	
 	void set_gpio_name(int no, std::string name);
 	void set_uart_addr(std::string addr);
@@ -224,9 +225,6 @@ protected:
 	
 	void show_deviceselect_dialog();
 	void configure_devices(const Device &device);
-
-private:
-	Ftdi::Context m_context;
 };
 
 #endif /* DEVCLIENT_MAINWINDOW_HH */

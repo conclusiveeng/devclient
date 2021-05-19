@@ -88,6 +88,54 @@ Uart::Uart(const Device &device, const Glib::RefPtr<Gio::SocketAddress> &addr,
 	Logger::info("UART: listening on {}", addr->to_string());
 }
 
+Uart::Uart(const Ftdi::Context &context, const Glib::RefPtr<Gio::SocketAddress> &addr,
+    int baudrate)
+{
+	Glib::RefPtr<Gio::SocketAddress> retaddr;
+
+	m_running = false;
+	m_context.set_interface(INTERFACE_C);
+	m_context = context;
+	
+	if (m_context.reset() != 0) {
+		show_centered_dialog("Failed to reset UART channel");
+		return;
+	}
+	
+	if (m_context.set_bitmode(0xff, BITMODE_RESET) != 0) {
+		show_centered_dialog("Failed to reset bitmode.");
+		return;
+	}
+
+	if (m_context.bitbang_disable() != 0) {
+		show_centered_dialog("Failed to set bitbang_disable.");
+		return;
+	}
+
+	if (m_context.set_baud_rate(115200) != 0) {
+		show_centered_dialog("Failed to set the baud rate.");
+		return;
+	}
+
+	m_context.set_latency(1);
+
+	try {
+		m_socket_service = Gio::ThreadedSocketService::create(10);
+		m_socket_service->add_address(
+		    addr,
+		    Gio::SocketType::SOCKET_TYPE_STREAM,
+		    Gio::SocketProtocol::SOCKET_PROTOCOL_TCP,
+		    retaddr);
+	} catch (const Glib::Exception &err) {
+		throw std::runtime_error(err.what());
+	}
+
+	m_socket_service->signal_run().connect(sigc::mem_fun(*this,
+	    &Uart::socket_worker));
+
+	Logger::info("UART: listening on {}", addr->to_string());
+}
+
 Uart::~Uart()
 {
 	stop();
@@ -142,7 +190,6 @@ Uart::usb_worker()
 
 		if (ret == 0)
 			continue;
-
 		Logger::debug("read {} bytes from USB", ret);
 
 		for (auto &i: m_connections) {

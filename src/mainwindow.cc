@@ -61,25 +61,27 @@ MainWindow::MainWindow():
 	set_title("Conclusive developer cable client");
 	set_size_request(640, 480);
 	set_position(Gtk::WIN_POS_CENTER_ALWAYS);
-	m_notebook.append_page(m_profile, "Profile");
+	// m_notebook.append_page(m_profile, "Profile");
 	m_notebook.append_page(m_uart_tab, "Serial console");
-	m_notebook.append_page(m_jtag_tab, "JTAG");
-	m_notebook.append_page(m_eeprom_tab, "EEPROM");
-	m_notebook.append_page(m_gpio_tab, "GPIO");
+	// m_notebook.append_page(m_jtag_tab, "JTAG");
+	// m_notebook.append_page(m_eeprom_tab, "EEPROM");
+	// m_notebook.append_page(m_gpio_tab, "GPIO");
 	add(m_notebook);
 
 	// set_icon_from_file(fmt::format("{}/icon.png", executable_dir()));
 	show_all_children();
 	//show_deviceselect_dialog();
 
-	m_context.set_interface(INTERFACE_ANY);
+	m_context.set_interface(INTERFACE_C);
 	if (m_context.open(0x0403, 0x6011) != 0) {
-		Logger::error("Cannot open USB device: '{}'",  m_context.error_string());
+		throw std::runtime_error(fmt::format(
+		    "Failed to open device: {}",
+		    m_context.error_string()));
 	}
 
-	m_i2c = new I2C(m_context, 100000);
-	m_gpio = new Gpio(m_context);
-	m_gpio->set(0);
+	// m_i2c = new I2C(m_context, 100000);
+	// m_gpio = new Gpio(m_context);
+	// m_gpio->set(0);
 	
 	m_gpio_tab.m_gpio = (std::shared_ptr<Gpio>) m_gpio;
 }
@@ -299,7 +301,8 @@ SerialTab::start_clicked()
 	    std::stoi(m_port_row.get_widget().get_text()));
 
 	try {
-		m_uart = std::make_shared<Uart>(m_device, addr, baud);
+		//m_uart = std::make_shared<Uart>(m_device, addr, baud);
+		m_uart = std::make_shared<Uart>(m_parent->m_context, addr, baud);
 		m_uart->m_connected.connect(sigc::mem_fun(*this,
 		    &SerialTab::client_connected));
 		m_uart->m_disconnected.connect(sigc::mem_fun(*this,
