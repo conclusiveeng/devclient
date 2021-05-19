@@ -273,7 +273,7 @@ SerialTab::SerialTab(MainWindow *parent, const Device &dev):
 	m_buttons.set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_END);
 	m_buttons.pack_start(m_start);
 	m_buttons.pack_start(m_stop);
-	m_buttons.pack_start(m_terminal);
+	// m_buttons.pack_start(m_terminal);
 
 	set_border_width(5);
 	pack_start(m_address_row, false, true);
