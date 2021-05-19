@@ -50,7 +50,18 @@ Run `sudo kextunload -b com.FTDI.driver.FTDIUSBSerialDriver`
     ```
 
 4. Copy install directory content into 'C:\msys64\mingw64'
-5. Build devclient package
+5. Build devclient package same way as for Linux
+6. Download "Zadig" from https://zadig.akeo.ie/
+7. Configure USB Driver for "Developer Cable"
+   1. In "Options" menu check "List all devices"
+   2. In "Options" menu uncheck "Ignore Hubs or Composite Parents"
+   3. From the list select "Developer Cable (Composite Parent)"
+   4. Select new driver "WinUSB" and press "Replace Driver" button
+   5. Unplug the developer cable after the change
+
+### Note
+
+Windows version currently only support serial port functionality.
 
 ## Usage
 
