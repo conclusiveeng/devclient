@@ -814,7 +814,7 @@ EepromTLVTab::load_clicked()
 	file_dialog.add_button("Select", Gtk::RESPONSE_OK);
 	file_dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
 
-	gint ret = file_dialog.run();
+	int ret = file_dialog.run();
 
 	if (ret == Gtk::RESPONSE_OK)
 		yaml_config_path = file_dialog.get_filename();
@@ -828,6 +828,13 @@ EepromTLVTab::load_clicked()
 				fmt::format("There was an error while reading EEPROM config file.\n{}",
 						onieTLVException.get_info()));
 		return;
+	}
+
+	for (auto const& addr: Eeprom::eeprom_addrs) {
+		if (addr.first == otlv.get_eeprom_address_from_yaml()) {
+			m_combo_addr.set_active_text(addr.first);
+			break;
+		}
 	}
 
 	for (const auto tlv_id: otlv.ALL_TLV_ID) {

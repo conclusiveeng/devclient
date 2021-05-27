@@ -172,6 +172,13 @@ bool OnieTLV::load_from_eeprom(const uint8_t *eeprom)
 	if (!eeprom)
 		return false;
 
+#if 0
+	/* Debug print for helping with I2C eeprom read issues */
+	for (int i=0; i < 100; i++) {
+		Logger::info("{}=0x{:x} | {}", i, eeprom[i], (char)eeprom[i]);
+	}
+#endif
+
 	record_header = reinterpret_cast<tlv_header_raw *> (eeprom_read_ptr);
 	if (strncmp(record_header->signature, TLV_EEPROM_ID_STRING, strlen(TLV_EEPROM_ID_STRING)) != 0) {
 		Logger::error("EEPROM TLV signature is invalid. Skipping loading values.");
