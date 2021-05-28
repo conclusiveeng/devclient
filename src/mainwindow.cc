@@ -40,6 +40,7 @@
 #include <eeprom.hh>
 #include <log.hh>
 #include <filesystem.hh>
+#include <profile.hh>
 
 MainWindow::MainWindow():
     m_profile(this, m_device),
@@ -123,88 +124,51 @@ ProfileTab::ProfileTab(MainWindow *parent, const Device &dev):
 void
 ProfileTab::clicked()
 {
-/* TODO: Use YAML parser here */
-// 	int res;
-// 	std::string fname;
-// 	ucl_parser *parser;
-// 	const ucl_object_t *root, *uart, *jtag, *device;
-// 	const ucl_object_t *baud, *uart_ip, *uart_port;
-// 	const ucl_object_t *jtag_ip, *gdb_port, *telnet_port, *jtag_script;
-// 	const ucl_object_t *gpio, *name0, *name1, *name2, *name3;
-// 	std::string uart_listen_addr;
-// //	uint32_t baudrate_value;
+	int ret;
+	std::string fname;
+	Gtk::FileChooserDialog d_file("Choose profile");
 
+	d_file.add_button("Select", Gtk::RESPONSE_OK);
+	d_file.add_button("Cancel", Gtk::RESPONSE_CANCEL);
 
-// 	Gtk::FileChooserDialog d_file("Choose profile");
+	ret = d_file.run();
 
-// 	d_file.add_button("Select", Gtk::RESPONSE_OK);
-// 	d_file.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+	switch (ret) {
+		case Gtk::RESPONSE_OK:
+			fname = d_file.get_filename();
+			break;
+		case Gtk::RESPONSE_CANCEL:
+			fname.clear();
+			break;
+	}
+	try {
+		m_parent->m_profile_file = new Profile(fname);
 
-// 	res = d_file.run();
+		/* set UART parameters */
+		m_parent->set_uart_addr(m_parent->m_profile_file->get_uart_listen_address());
+		m_parent->set_uart_port(std::to_string(m_parent->m_profile_file->get_uart_port()));
+		m_parent->set_uart_baud(std::to_string(m_parent->m_profile_file->get_uart_baudrate()));
 
-// 	switch (res) {
-// 		case Gtk::RESPONSE_OK:
-// 			fname = d_file.get_filename();
-// 			break;
-// 		case Gtk::RESPONSE_CANCEL:
-// 			fname.clear();
-// 			break;
-// 	}
+		/* set JTAG parameters */
+		m_parent->set_jtag_addr(m_parent->m_profile_file->get_jtag_listen_address());
+		m_parent->set_jtag_ocd_port(std::to_string(m_parent->m_profile_file->get_jtag_telnet_port()));
+		m_parent->set_jtag_gdb_port(std::to_string(m_parent->m_profile_file->get_jtag_gdb_port()));
 
-// 	parser = ucl_parser_new(0);
-// 	if (!ucl_parser_add_file(parser, fname.c_str())) {
-// 		Gtk::MessageDialog *error_dialog = new Gtk::MessageDialog("Error loading profile file", false);
-// 		error_dialog->set_title("Error");
-// 		error_dialog->set_secondary_text(ucl_parser_get_error(parser));
-// 		error_dialog->run();
-// 		delete error_dialog;
-// 		return;
-// 	}
+		for (int i = 0; i < 4; i++) {
+			std::string gpio_name = m_parent->m_profile_file->get_gpio_name(i);
+			if (!gpio_name.empty())
+				m_parent->set_gpio_name(i, gpio_name);
+		}
 
-// 	root = ucl_parser_get_object(parser);
-// 	device =  ucl_object_lookup(root, "device");
+		m_parent->set_jtag_script(m_parent->m_profile_file->get_jtag_script_file());
+	} 
+	catch (const ProfileValueException& error) 
+	{
+		show_centered_dialog("Error while reading profile file ", error.get_info());
+	}
 
-// 	/* parse UART */
-// 	uart = ucl_object_lookup(device, "uart");
-// 	baud = ucl_object_lookup(uart, "baudrate");
-// //	baudrate_value = ucl_object_toint(baud);
-// 	uart_ip = ucl_object_lookup(uart, "listen_ip");
-// 	uart_port = ucl_object_lookup(uart, "listen_port");
+	m_entry.get_widget().set_text(filesystem::path(fname).filename().c_str());
 
-// 	/* parse JTAG */
-// 	jtag = ucl_object_lookup(device, "jtag");
-// 	jtag_ip = ucl_object_lookup(jtag, "listen_ip");
-// 	gdb_port = ucl_object_lookup(jtag, "gdb_port");
-// 	telnet_port = ucl_object_lookup(jtag, "telnet_port");
-// //	pass_through = ucl_object_lookup(jtag, "pass_through");
-// 	jtag_script = ucl_object_lookup(jtag, "script");
-
-// 	/* parse GPIO */
-// 	gpio = ucl_object_lookup(device, "gpio");
-// 	name0 = ucl_object_lookup(gpio, "gpio0");
-// 	name1 = ucl_object_lookup(gpio, "gpio1");
-// 	name2 = ucl_object_lookup(gpio, "gpio2");
-// 	name3 = ucl_object_lookup(gpio, "gpio3");
-
-// 	/* set UART parameters */
-// 	m_parent->set_uart_addr(ucl_object_tostring(uart_ip));
-// 	m_parent->set_uart_port(std::to_string(ucl_object_toint(uart_port)));
-// 	m_parent->set_uart_baud(std::to_string(ucl_object_toint(baud)));
-
-// 	/* set JTAG parameters */
-// 	m_parent->set_jtag_addr(ucl_object_tostring(jtag_ip));
-// 	m_parent->set_jtag_ocd_port(std::to_string(ucl_object_toint(telnet_port)));
-// 	m_parent->set_jtag_gdb_port(std::to_string(ucl_object_toint(gdb_port)));
-// 	m_parent->set_jtag_script(ucl_object_tostring(jtag_script));
-
-// 	/* set GPIO parameters */
-// 	m_parent->set_gpio_name(0, ucl_object_tostring(name0));
-// 	m_parent->set_gpio_name(1, ucl_object_tostring(name1));
-// 	m_parent->set_gpio_name(2, ucl_object_tostring(name2));
-// 	m_parent->set_gpio_name(3, ucl_object_tostring(name3));
-
-// 	/* show file name in profile tab */
-// 	m_entry.get_widget().set_text(filesystem::path(fname).filename().c_str());
 }
 
 SerialTab::SerialTab(MainWindow *parent, const Device &dev):
@@ -799,14 +763,23 @@ void EepromTLVTab::update_tlv_row(tlv_code_t id, std::string value)
 void
 EepromTLVTab::load_clicked()
 {
+	int ret;
 	Glib::ustring yaml_config_path;
 	Gtk::FileChooserDialog file_dialog("Load .yaml file with EEPROM configuration for the board");
 
 	file_dialog.add_button("Select", Gtk::RESPONSE_OK);
 	file_dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+	if (m_parent->m_profile_file) {
+		try {
+			file_dialog.set_filename(m_parent->m_profile_file->get_eeprom_file());
+		} 
+		catch (const ProfileValueException& error) 
+		{
+			Logger::warning("Eeprom file in profile file is not set.");
+		}
+	}
 
-	int ret = file_dialog.run();
-
+	ret = file_dialog.run();
 	if (ret == Gtk::RESPONSE_OK)
 		yaml_config_path = file_dialog.get_filename();
 	else
@@ -1020,7 +993,7 @@ GpioTab::timer()
 void
 GpioTab::set_gpio_name(int no, const std::string &name)
 {
-
+	m_gpio_row[no].set_gpio_name(name);
 }
 
 void MainWindow::set_uart_addr(std::string addr)

@@ -38,6 +38,7 @@
 #include <dtb.hh>
 //#include <profile.hh>
 #include <onie_tlv.hh>
+#include <profile.hh>
 
 class MainWindow;
 
@@ -244,6 +245,7 @@ public:
 
 	Gpio *m_gpio;
 	I2C *m_i2c;
+	Profile *m_profile_file;
 	
 	void set_gpio_name(int no, std::string name);
 	void set_uart_addr(std::string addr);
