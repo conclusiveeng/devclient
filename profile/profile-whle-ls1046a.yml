@@ -1,0 +1,21 @@
+profile-name: profile-whle-ls1046a
+uart:
+  baudrate: 115200
+  listen_address: 127.0.0.1
+  listen_port: 2222
+
+jtag:
+  listen_address: 127.0.0.1
+  gdb_listen_port: 3333
+  telnet_listen_port: 4444
+  # script_file: 
+  pass_trough: false
+
+gpio:
+  - JTAG_HRESET_B
+  - JTAG_BSR_VSEL
+  - JTAG_TBSCAN_EN
+  - NC
+
+eeprom:
+  eeprom_file: ../eeprom/whle-ls1.yaml
