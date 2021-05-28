@@ -1,0 +1,21 @@
+profile-name: profile-kstr-sama5d27
+uart:
+  baudrate: 115200
+  listen_address: 127.0.0.1
+  listen_port: 2222
+
+jtag:
+  listen_address: 127.0.0.1
+  gdb_listen_port: 3333
+  telnet_listen_port: 4444
+  script_file: ../scripts/samthedongle-v2.tcl
+  pass_trough: false
+
+gpio:
+  - GPIO_0
+  - NC
+  - NC
+  - NC
+
+eeprom:
+  eeprom_file: ../eeprom/kstr-sama5d27-rev2.0.yaml
