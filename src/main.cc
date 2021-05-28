@@ -46,7 +46,6 @@
 #include <mainwindow.hh>
 #include <application.hh>
 #include <nogui.hh>
-#include <ucl.h>
 #include <onie_tlv.hh>
 
 using namespace std;
@@ -183,58 +182,59 @@ int jtag_maintenance(std::string serial, std::string jtag, std::string script, s
 int
 parse_config_file(std::string file_read, std::shared_ptr<SerialCmdLine> &serial_cmd, std::shared_ptr<JtagCmdLine> &jtag_cmd)
 {
-	ucl_parser *parser;
-	const ucl_object_t *root, *uart, *jtag, *device, *serial;
-	const ucl_object_t *baud, *uart_ip, *uart_port;
-	const ucl_object_t *jtag_ip, *gdb_port, *telnet_port, *pass_through, *jtag_script;
-	std::string uart_listen_addr;
-	uint32_t baudrate_value;
+	/* TODO: Use YAML Parser here */
+	// ucl_parser *parser;
+	// const ucl_object_t *root, *uart, *jtag, *device, *serial;
+	// const ucl_object_t *baud, *uart_ip, *uart_port;
+	// const ucl_object_t *jtag_ip, *gdb_port, *telnet_port, *pass_through, *jtag_script;
+	// std::string uart_listen_addr;
+	// uint32_t baudrate_value;
 
-	parser = ucl_parser_new(0);
-	if (!ucl_parser_add_file(parser, file_read.c_str()))
-		printf("error loading config file\n");
+	// parser = ucl_parser_new(0);
+	// if (!ucl_parser_add_file(parser, file_read.c_str()))
+	// 	printf("error loading config file\n");
 
-	root = ucl_parser_get_object(parser);
-	device =  ucl_object_lookup(root, "device");
+	// root = ucl_parser_get_object(parser);
+	// device =  ucl_object_lookup(root, "device");
 
-	serial = ucl_object_lookup(device, "serial");
+	// serial = ucl_object_lookup(device, "serial");
 
-	/* parse UART */
-	uart = ucl_object_lookup(device, "uart");
-	baud = ucl_object_lookup(uart, "baudrate");
-	baudrate_value = ucl_object_toint(baud);
-	uart_ip = ucl_object_lookup(uart, "listen_ip");
-	uart_port = ucl_object_lookup(uart, "listen_port");
+	// /* parse UART */
+	// uart = ucl_object_lookup(device, "uart");
+	// baud = ucl_object_lookup(uart, "baudrate");
+	// baudrate_value = ucl_object_toint(baud);
+	// uart_ip = ucl_object_lookup(uart, "listen_ip");
+	// uart_port = ucl_object_lookup(uart, "listen_port");
 
-	/* parse JTAG */
-	jtag = ucl_object_lookup(device, "jtag");
-	jtag_ip = ucl_object_lookup(jtag, "listen_ip");
-	gdb_port = ucl_object_lookup(jtag, "gdb_port");
-	telnet_port = ucl_object_lookup(jtag, "telnet_port");
-	pass_through = ucl_object_lookup(jtag, "pass_through");
-	jtag_script = ucl_object_lookup(jtag, "script");
+	// /* parse JTAG */
+	// jtag = ucl_object_lookup(device, "jtag");
+	// jtag_ip = ucl_object_lookup(jtag, "listen_ip");
+	// gdb_port = ucl_object_lookup(jtag, "gdb_port");
+	// telnet_port = ucl_object_lookup(jtag, "telnet_port");
+	// pass_through = ucl_object_lookup(jtag, "pass_through");
+	// jtag_script = ucl_object_lookup(jtag, "script");
 
-	if ((pass_through != NULL) && (ucl_object_toint(pass_through)) && (jtag_ip != NULL)) {
-		Logger::error("JTAG server and pass through mode cannot be used together");
-		exit(0);
-	}
+	// if ((pass_through != NULL) && (ucl_object_toint(pass_through)) && (jtag_ip != NULL)) {
+	// 	Logger::error("JTAG server and pass through mode cannot be used together");
+	// 	exit(0);
+	// }
 
-	if (uart != NULL) {
-		char addr[128];
-		std::sprintf(addr, "%s:%lu", ucl_object_tostring(uart_ip), ucl_object_toint(uart_port));
-		uart_listen_addr.assign(addr, strlen(addr));
-		uart_maintenance(ucl_object_tostring(serial), uart_listen_addr, baudrate_value, serial_cmd);
-	}
+	// if (uart != NULL) {
+	// 	char addr[128];
+	// 	std::sprintf(addr, "%s:%lu", ucl_object_tostring(uart_ip), ucl_object_toint(uart_port));
+	// 	uart_listen_addr.assign(addr, strlen(addr));
+	// 	uart_maintenance(ucl_object_tostring(serial), uart_listen_addr, baudrate_value, serial_cmd);
+	// }
 
-	if ((jtag != NULL) && (!(ucl_object_toint(pass_through)))) {
-		char jtag2[128];
-		std::string jtag3;
-		std::sprintf(jtag2, "%s:%lu:%lu",
-			     ucl_object_tostring(jtag_ip),
-			     ucl_object_toint(gdb_port), ucl_object_toint(telnet_port));
-		jtag3.assign(jtag2, strlen(jtag2));
-		jtag_maintenance(ucl_object_tostring(serial), jtag2, ucl_object_tostring(jtag_script), jtag_cmd);
-	}
+	// if ((jtag != NULL) && (!(ucl_object_toint(pass_through)))) {
+	// 	char jtag2[128];
+	// 	std::string jtag3;
+	// 	std::sprintf(jtag2, "%s:%lu:%lu",
+	// 		     ucl_object_tostring(jtag_ip),
+	// 		     ucl_object_toint(gdb_port), ucl_object_toint(telnet_port));
+	// 	jtag3.assign(jtag2, strlen(jtag2));
+	// 	jtag_maintenance(ucl_object_tostring(serial), jtag2, ucl_object_tostring(jtag_script), jtag_cmd);
+	// }
 
 	return 0;
 }
