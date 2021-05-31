@@ -37,3 +37,4 @@ build
 # IDE-specific
 .idea
 cmake-build-debug
+.cache

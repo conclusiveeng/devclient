@@ -37,6 +37,7 @@
 #include <i2c.hh>
 #include <dtb.hh>
 //#include <profile.hh>
+#include <onie_tlv.hh>
 
 class MainWindow;
 
@@ -174,6 +175,47 @@ protected:
 	const Device &m_device;
 };
 
+class EepromTLVTab: public Gtk::Box
+{
+public:
+	EepromTLVTab(MainWindow *parent);
+
+protected:
+	class ModelColumns : public Gtk::TreeModel::ColumnRecord
+	{
+	public:
+		ModelColumns() {add(m_id); add(m_name); add(m_value);}
+
+		Gtk::TreeModelColumn<tlv_code_t> m_id;
+		Gtk::TreeModelColumn<std::string> m_name;
+		Gtk::TreeModelColumn<std::string> m_value;
+	};
+
+	Gtk::Label m_addr_label;
+	Gtk::HPaned m_paned;
+	Gtk::ScrolledWindow m_scroll;
+	Gtk::ButtonBox m_buttons;
+	Gtk::Button m_load;
+	Gtk::Button m_read;
+	Gtk::Button m_write;
+	Gtk::Button m_clear;
+	MainWindow *m_parent;
+	Glib::RefPtr<Gtk::ListStore> m_list_store_ref;
+	Gtk::TreeView m_tlv_records;
+	std::shared_ptr<std::vector<uint8_t>> m_blob;
+	OnieTLV otlv;
+	ModelColumns m_model_columns;
+	Gtk::ComboBoxText m_combo_addr;
+
+	void load_clicked();
+	void read_clicked();
+	void write_clicked();
+	void clear_clicked();
+	void add_tlv_row(tlv_code_t id, std::string name, std::string value);
+	void update_tlv_row(tlv_code_t id, std::string value);
+
+};
+
 class GpioTab: public Gtk::Box
 {
 public:
@@ -217,7 +259,8 @@ protected:
 	ProfileTab m_profile;
 	SerialTab m_uart_tab;
 	JtagTab m_jtag_tab;
-	EepromTab m_eeprom_tab;
+//	EepromTab m_eeprom_tab;
+	EepromTLVTab m_eeprom_tlv_tab;
 	GpioTab m_gpio_tab;
 	Device m_device;
 	

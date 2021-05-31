@@ -47,6 +47,7 @@
 #include <application.hh>
 #include <nogui.hh>
 #include <ucl.h>
+#include <onie_tlv.hh>
 
 using namespace std;
 
@@ -85,6 +86,9 @@ usage(const std::string &argv0)
 	fmt::print("		parameter format: <IP_address>:<gdb_port>:<telnet_port>\n");
 	fmt::print("		example: -j 0.0.0.0:3333:4444\n");
 	fmt::print("-l:		list connected devices\n");
+	fmt::print("-m:		read .yaml file with ONIE TLV config and write to eeprom\n");
+	fmt::print("-n:		read eeprom by address and print ONIE TLV values to stdout\n");
+	fmt::print("		example: -n 0x50 \n");
 	fmt::print("-p:		enable JTAG pass-through mode, cannot be used together with -j option\n");
 	fmt::print("-r:		read raw eeprom contents (binary data) and save it to file\n");
 	fmt::print("		example: -r eeprom.img\n");
@@ -248,6 +252,7 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 	std::string script;
 	std::string file_read;
 	std::string file_write;
+	std::string eeprom_addr;
 	uint8_t gpio_value;
 	uint32_t baudrate_value;
 	std::ofstream f_out;
@@ -261,10 +266,12 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 	bool gpio = false;
 	bool pass_through = false;
 	bool config = false;
+	bool tlv_write = false;
+	bool tlv_read = false;
 	int ch;
 
 	for (;;) {
-		ch = getopt_long(argc, argv, "b:c:d:g:hj:lpr:s:t:u:w:x:", long_options, nullptr);
+		ch = getopt_long(argc, argv, "b:c:d:g:hj:lm:n:pr:s:t:u:w:x:", long_options, nullptr);
 		if (ch == -1)
 			break;
 
@@ -294,6 +301,14 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 			break;
 		case 'l':
 			list = true;
+			break;
+		case 'm':
+			tlv_write = true;
+			file_read = optarg;
+			break;
+		case 'n':
+			tlv_read = true;
+			eeprom_addr = optarg;
 			break;
 		case 'p':
 			pass_through = true;
@@ -431,6 +446,49 @@ parse_cmdline(int argc, char *const argv[], std::shared_ptr<SerialCmdLine> &seri
 		std::remove(fname);
 
 		eeprom.write(0, data);
+		exit(0);
+	}
+
+	if (tlv_write) {
+		dev = *DeviceEnumerator::find_by_serial(serial);
+		I2C i2c(dev, 300000);
+		Eeprom24c eeprom(i2c);
+		std::vector<uint8_t> data;
+		OnieTLV otlv;
+		uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
+
+		try {
+			otlv.load_from_yaml(file_read);
+		} catch (OnieTLVException& onieTLVException) {
+			Logger::error("There was a problem with loading EEPROM config file.\n{}", onieTLVException.get_info());
+			exit(-1);
+		}
+
+		otlv.generate_eeprom_file(eeprom_file);
+		data = std::vector<uint8_t>(eeprom_file, eeprom_file+otlv.get_usage());
+		eeprom.set_address(otlv.get_eeprom_address_from_yaml());
+		eeprom.write(0, data);
+		exit(0);
+	}
+
+	if (tlv_read) {
+		dev = *DeviceEnumerator::find_by_serial(serial);
+		I2C i2c(dev, 300000);
+		Eeprom24c eeprom(i2c);
+		std::vector<uint8_t> data;
+		OnieTLV otlv;
+		eeprom.set_address(eeprom_addr);
+
+		try {
+			eeprom.read(0, TLV_EEPROM_MAX_SIZE, data);
+			otlv.load_from_eeprom(data.data());
+		} catch (const std::runtime_error &err) {
+			Logger::error("There was an error while reading EEPROM.");
+			exit(-1);
+		}
+		for (const auto tlv_id: otlv.ALL_TLV_ID) {
+			std::cout << fmt::format("Field id: [0x{:x}] Value: [{}]\n", tlv_id, otlv.get_tlv_record(tlv_id).value_or(""));
+		}
 		exit(0);
 	}
 
