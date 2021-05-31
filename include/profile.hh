@@ -38,11 +38,11 @@
 #include <yaml-cpp/node/node.h>
 #include <yaml-cpp/yaml.h>
 
-class ProfileValueException : public std::exception {
+class ProfileConfigException : public std::exception {
   std::string error_msg;
 
 public:
-  ProfileValueException(const std::string &msg) : std::exception() {
+  ProfileConfigException(const std::string &msg) : std::exception() {
     error_msg = msg;
   }
 
@@ -51,10 +51,10 @@ public:
   std::string get_info() const { return error_msg; }
 };
 
-class Profile {
+class ProfileConfig {
 
 public:
-  Profile(const std::string &file_name);
+  ProfileConfig(const std::string &file_name);
   std::string get_devcable_serial();
   std::uint32_t get_uart_baudrate();
   std::string get_uart_listen_address();

@@ -184,27 +184,27 @@ int jtag_maintenance(std::string serial, std::string jtag, std::string script, s
 int
 parse_config_file(std::string file_read, std::shared_ptr<SerialCmdLine> &serial_cmd, std::shared_ptr<JtagCmdLine> &jtag_cmd)
 {
-	Profile profile_file = Profile(file_read);
+	ProfileConfig pc = ProfileConfig(file_read);
 
 	try {
-		std::string listen_addr = fmt::format("{}:{}", profile_file.get_uart_listen_address(), profile_file.get_uart_port());
-		uart_maintenance(profile_file.get_devcable_serial(), listen_addr, profile_file.get_uart_baudrate(), serial_cmd);
-	} catch (const ProfileValueException& error) {
+		std::string listen_addr = fmt::format("{}:{}", pc.get_uart_listen_address(), pc.get_uart_port());
+		uart_maintenance(pc.get_devcable_serial(), listen_addr, pc.get_uart_baudrate(), serial_cmd);
+	} catch (const ProfileConfigException& error) {
 		Logger::error("Serial port configuration is invalid. {}", error.get_info());
 		exit(-1);
 	}
 
 	try {
-		if (profile_file.get_jtag_passtrough() == true) {
+		if (pc.get_jtag_passtrough() == true) {
 			fmt::print("Passtrough mode is enabled in config file. Please use external JTAG.\n");
-			Device dev = *DeviceEnumerator::find_by_serial(profile_file.get_devcable_serial());
+			Device dev = *DeviceEnumerator::find_by_serial(pc.get_devcable_serial());
 			jtag_cmd->bypass(dev);
 		} else {
-			std::string jtag_connector = fmt::format("{}:{}:{}", profile_file.get_jtag_listen_address(),
-			profile_file.get_jtag_gdb_port(), profile_file.get_jtag_telnet_port());
-			jtag_maintenance(profile_file.get_devcable_serial(), jtag_connector, profile_file.get_jtag_script_file(), jtag_cmd);
+			std::string jtag_connector = fmt::format("{}:{}:{}", pc.get_jtag_listen_address(),
+			pc.get_jtag_gdb_port(), pc.get_jtag_telnet_port());
+			jtag_maintenance(pc.get_devcable_serial(), jtag_connector, pc.get_jtag_script_file(), jtag_cmd);
 		}
-	} catch (const ProfileValueException& error) {
+	} catch (const ProfileConfigException& error) {
 		Logger::error("Serial port configuration is invalid. {}", error.get_info());
 		exit(-1);
 	}

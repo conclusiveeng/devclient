@@ -245,7 +245,7 @@ public:
 
 	Gpio *m_gpio;
 	I2C *m_i2c;
-	Profile *m_profile_file;
+	ProfileConfig *m_pc;
 	
 	void set_gpio_name(int no, std::string name);
 	void set_uart_addr(std::string addr);
