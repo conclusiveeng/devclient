@@ -29,8 +29,10 @@
 #ifndef DEVCLIENT_I2C_HH
 #define DEVCLIENT_I2C_HH
 
+#include <device.hh>
 #include <vector>
 #include <ftdi.hpp>
+#include <stdint.h>
 
 #define SCL		(1u << 0)
 #define SDA_OUT		(1u << 1)

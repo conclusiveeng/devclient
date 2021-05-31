@@ -29,13 +29,21 @@
 #ifndef DEVCLIENT_EEPROM_HH
 #define DEVCLIENT_EEPROM_HH
 
+#include <bits/stdint-uintn.h>
 #include <i2c.hh>
-#include <eeprom.hh>
+#include <string>
+#include <map>
+
+struct EepromAddress {
+	uint8_t read;
+	uint8_t write;
+	bool valid;
+};
 
 class Eeprom
 {
 public:
-	Eeprom(I2C &i2c): m_i2c(i2c) {}
+	Eeprom(I2C &i2c): m_i2c(i2c) {address.valid = false;}
 	virtual ~Eeprom() {}
 
 	virtual void read(uint16_t offset, size_t length,
@@ -43,9 +51,12 @@ public:
 	virtual void write(uint16_t offset,
 	    const std::vector<uint8_t> &data) = 0;
 	virtual void erase() = 0;
+	virtual void set_address(std::string addr) = 0;
+	static std::map<std::string, uint8_t> eeprom_addrs;
 
 protected:
 	I2C &m_i2c;
+	EepromAddress address;
 };
 
 #endif //DEVCLIENT_EEPROM_HH

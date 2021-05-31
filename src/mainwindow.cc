@@ -38,6 +38,8 @@
 #include <mainwindow.hh>
 #include <application.hh>
 #include <ucl.h>
+#include <eeprom.hh>
+#include <log.hh>
 
 
 #if __cplusplus <= 201703L
@@ -53,7 +55,9 @@ MainWindow::MainWindow():
     m_profile(this, m_device),
     m_uart_tab(this, m_device),
     m_jtag_tab(this, m_device),
-    m_eeprom_tab(this, m_device),
+// Disable EEPROM tab based on device tree format.
+//  m_eeprom_tab(this, m_device),
+    m_eeprom_tlv_tab(this),
     m_gpio_tab(this, m_device)
 {
 	set_title("Conclusive developer cable client");
@@ -62,7 +66,8 @@ MainWindow::MainWindow():
 	m_notebook.append_page(m_profile, "Profile");
 	m_notebook.append_page(m_uart_tab, "Serial console");
 	m_notebook.append_page(m_jtag_tab, "JTAG");
-	m_notebook.append_page(m_eeprom_tab, "EEPROM");
+//	m_notebook.append_page(m_eeprom_tab, "EEPROM");
+	m_notebook.append_page(m_eeprom_tlv_tab, "EEPROM TLV");
 	m_notebook.append_page(m_gpio_tab, "GPIO");
 	add(m_notebook);
 
@@ -721,6 +726,233 @@ EepromTab::decompile_done(bool ok, int size, const std::string &errors)
 		    Glib::Markup::escape_text(errors)), true);
 		dlg.run();
 	}
+}
+EepromTLVTab::EepromTLVTab(MainWindow *parent):
+		Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL),
+		m_load("Load YAML"),
+		m_read("Read EEPROM"),
+		m_write("Write EEPROM"),
+		m_clear("Clear EEPROM"),
+		m_parent(parent)
+{
+	Pango::FontDescription font("Monospace 9");
+
+	m_addr_label.set_label("EEPROM address: ");
+	for (auto const& addr: Eeprom::eeprom_addrs)
+		m_combo_addr.append(addr.first);
+	m_combo_addr.set_active(0);
+	m_paned.add1(m_addr_label);
+	m_paned.add2(m_combo_addr);
+
+	m_list_store_ref = Gtk::ListStore::create(m_model_columns);
+	m_tlv_records.set_model(m_list_store_ref);
+
+	m_tlv_records.append_column_numeric("Id", m_model_columns.m_id, "0x%02x");
+	m_tlv_records.append_column("Name", m_model_columns.m_name);
+	m_tlv_records.append_column_editable("Value", m_model_columns.m_value);
+
+	add_tlv_row(TLV_CODE_PRODUCT_NAME, "Product name", "set-me-sample-name");
+	add_tlv_row(TLV_CODE_PART_NUMBER, "Part number", "");
+	add_tlv_row(TLV_CODE_SERIAL_NUMBER, "Serial number", "000000");
+	add_tlv_row(TLV_CODE_MAC_BASE, "MAC", "70:B3:D5:B9:D0:00");
+	add_tlv_row(TLV_CODE_MANUF_DATE, "Manufacture date", "01/01/2021 12:00:01");
+	add_tlv_row(TLV_CODE_DEV_VERSION, "Device version", "1");
+	add_tlv_row(TLV_CODE_LABEL_REVISION, "Label revision", "");
+	add_tlv_row(TLV_CODE_PLATFORM_NAME, "Platform name", "");
+	add_tlv_row(TLV_CODE_ONIE_VERSION, "ONIE version", "1");
+	add_tlv_row(TLV_CODE_NUM_MACs, "Number MACs", "1");
+	add_tlv_row(TLV_CODE_MANUF_NAME, "Manufacturer", "Conclusive Engineering");
+	add_tlv_row(TLV_CODE_COUNTRY_CODE, "Country code", "PL");
+	add_tlv_row(TLV_CODE_VENDOR_NAME, "Vendor", "");
+	add_tlv_row(TLV_CODE_DIAG_VERSION, "Diag Version", "");
+	add_tlv_row(TLV_CODE_SERVICE_TAG, "Service tag", "");
+
+	m_scroll.add(m_tlv_records);
+
+	m_buttons.set_border_width(5);
+	m_buttons.set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_END);
+	m_buttons.pack_start(m_load);
+	m_buttons.pack_start(m_read);
+	m_buttons.pack_start(m_write);
+	m_buttons.pack_start(m_clear);
+
+	set_border_width(5);
+	pack_start(m_paned, false, false);
+	pack_start(m_scroll, true, true);
+	pack_start(m_buttons, false, true);
+
+	m_load.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::load_clicked));
+	m_read.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::read_clicked));
+	m_write.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::write_clicked));
+	m_clear.signal_clicked().connect(sigc::mem_fun(*this, &EepromTLVTab::clear_clicked));
+}
+
+void EepromTLVTab::add_tlv_row(tlv_code_t id, std::string name, std::string value)
+{
+	auto row = *(m_list_store_ref->append());
+	row[m_model_columns.m_id] = id;
+	row[m_model_columns.m_name] = name;
+	row[m_model_columns.m_value] = value;
+}
+
+void EepromTLVTab::update_tlv_row(tlv_code_t id, std::string value)
+{
+	for (auto row: m_list_store_ref->children()) {
+		if (row.get_value(m_model_columns.m_id)==id) {
+			row[m_model_columns.m_value] = value;
+			break;
+		}
+	}
+}
+
+void
+EepromTLVTab::load_clicked()
+{
+	Glib::ustring yaml_config_path;
+	Gtk::FileChooserDialog file_dialog("Load .yaml file with EEPROM configuration for the board");
+
+	file_dialog.add_button("Select", Gtk::RESPONSE_OK);
+	file_dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+
+	int ret = file_dialog.run();
+
+	if (ret == Gtk::RESPONSE_OK)
+		yaml_config_path = file_dialog.get_filename();
+	else
+		return;
+
+	try {
+		otlv.load_from_yaml(yaml_config_path.c_str());
+	} catch (OnieTLVException& onieTLVException) {
+		show_centered_dialog("Error EEPROM TLV ",
+				fmt::format("There was an error while reading EEPROM config file.\n{}",
+						onieTLVException.get_info()));
+		return;
+	}
+
+	for (auto const& addr: Eeprom::eeprom_addrs) {
+		if (addr.first == otlv.get_eeprom_address_from_yaml()) {
+			m_combo_addr.set_active_text(addr.first);
+			break;
+		}
+	}
+
+	for (const auto tlv_id: otlv.ALL_TLV_ID) {
+		update_tlv_row(tlv_id, otlv.get_tlv_record(tlv_id).value_or(std::string("")));
+	}
+}
+
+void
+EepromTLVTab::write_clicked()
+{
+	uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
+
+	for (auto row: m_list_store_ref->children())
+	{
+		tlv_code_t tlv_id = row.get_value(m_model_columns.m_id);
+		std::string field_value = row.get_value(m_model_columns.m_value);
+		switch (tlv_id) {
+			case TLV_CODE_DEV_VERSION:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Wrong value for filed id: 0x{:x} = 'device version'.\n{}",
+									TLV_CODE_DEV_VERSION, onieTLVException.get_info()));
+					return;
+				}
+				break;
+			case TLV_CODE_NUM_MACs:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Wrong value for filed id: 0x{:x} = 'mac number'.\n{}",
+									TLV_CODE_NUM_MACs, onieTLVException.get_info()));
+					return;
+				}
+				break;
+			case TLV_CODE_COUNTRY_CODE:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Country code (0x{:x}) must 2 characters only."
+				   "Example: PL.\n{}", TLV_CODE_COUNTRY_CODE, onieTLVException.get_info()));
+					return;
+				}
+				break;
+			case TLV_CODE_MANUF_DATE:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Invalid date field (0x{:x})."
+				   "Required format is: MM/DD/YYYY hh:mm:ss.\n{}", TLV_CODE_COUNTRY_CODE, onieTLVException.get_info()));
+					return;
+				}
+				break;
+			case TLV_CODE_MAC_BASE:
+				try {
+					otlv.save_user_tlv(tlv_id, field_value);
+				} catch (OnieTLVException &onieTLVException) {
+					show_centered_dialog("Error EEPROM TLV",
+							fmt::format("ERROR: Wrong value for field id: 0x{:x} = 'mac adress'.\n{}",
+									TLV_CODE_MAC_BASE, onieTLVException.get_info()));
+					return;
+				}
+				break;
+			default:
+				if (!field_value.empty()) {
+					try {
+						otlv.save_user_tlv(tlv_id, field_value);
+					} catch (OnieTLVException &onieTLVException) {
+						show_centered_dialog("Error EEPROM TLV", fmt::format("ERROR: Wrong value for field id: 0x{:x}\n{}",
+								tlv_id, onieTLVException.get_info()));
+						return;
+					}
+				} else {
+					Logger::debug("Skipping field id 0x{:x} because it's empty", tlv_id);
+				}
+		}
+	}
+
+	otlv.generate_eeprom_file(eeprom_file);
+	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+otlv.get_usage());
+	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.set_address(m_combo_addr.get_active_text());
+	eeprom.write(0, *m_blob);
+}
+
+void
+EepromTLVTab::read_clicked()
+{
+	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.set_address(m_combo_addr.get_active_text());
+
+	m_blob = std::make_shared<std::vector<uint8_t>>();
+	try {
+		eeprom.read(0, 2048, *m_blob);
+		otlv.load_from_eeprom(m_blob->data());
+	} catch (const std::runtime_error &err) {
+		show_centered_dialog("Error EEPROM TLV ", "Error while trying to read EEPROM.");
+		return;
+	}
+
+	for (const auto tlv_id: otlv.ALL_TLV_ID) {
+		update_tlv_row(tlv_id, otlv.get_tlv_record(tlv_id).value_or(std::string("")));
+	}
+}
+
+void
+EepromTLVTab::clear_clicked()
+{
+	uint8_t eeprom_file[TLV_EEPROM_MAX_SIZE];
+	memset(eeprom_file, '0', TLV_EEPROM_MAX_SIZE);
+	m_blob = std::make_shared<std::vector<uint8_t>>(eeprom_file, eeprom_file+TLV_EEPROM_MAX_SIZE);
+	Eeprom24c eeprom(*m_parent->m_i2c);
+	eeprom.set_address(m_combo_addr.get_active_text());
+	eeprom.write(0, *m_blob);
 }
 
 GpioTab::GpioTab(MainWindow *parent, const Device &dev):

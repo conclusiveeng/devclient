@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 project(devclient)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-Wall -ggdb3")
@@ -13,6 +13,7 @@ add_subdirectory(contrib/libucl)
 
 find_package(PkgConfig)
 find_package(Boost)
+find_package(yaml-cpp)
 
 pkg_check_modules(GTKMM gtkmm-3.0)
 pkg_check_modules(GIOMM giomm-2.4)
@@ -28,6 +29,7 @@ include_directories(${LIBFTDI_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/filesystem-1.2.10/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/libucl/include)
+include_directories(${YAML_CPP_INCLUDE_DIRS})
 include_directories(include)
 
 add_executable(devclient
@@ -43,7 +45,9 @@ add_executable(devclient
         src/application.cc
         src/mainwindow.cc
         src/nogui.cc
-        src/main.cc)
+        src/main.cc
+        src/onie_tlv.cc
+        src/eeprom.cc)
 
 message("-- Cloning OpenOCD")
 
@@ -75,8 +79,10 @@ target_link_libraries(devclient
         ${GTKMM_LIBRARIES}
         ${LIBFTDI_LIBRARIES}
         ${Boost_LIBRARIES}
+        ${YAML_CPP_LIBRARIES}
         fmt
-        ucl)
+        ucl
+        z)
 target_link_libraries(devclient pthread)
 target_link_libraries(devclient ftdipp1)
 

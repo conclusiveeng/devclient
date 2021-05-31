@@ -1,0 +1,49 @@
+board-name: whle-ls1
+rev: 1.0
+address: 0x56
+eeprom:
+    -
+        name: product-name
+        value: WHLE-LS1046A
+#    -
+#        name: part-number
+#        value:
+    -
+        name: serial-number
+        value: 0010000
+    -
+        name: mac-address
+        value: 70:B3:D5:B9:D0:70
+    -
+        name: manufacture-date
+        value: 01/01/2021 12:01:01
+    -
+        name: device-version
+        value: 1
+    -
+        name: label-revision
+        value: WHLE-LS1046A
+#    -
+#        name: platform-name
+#        value:
+    -
+        name: onie-version
+        value: 1
+    -
+        name: number-mac
+        value: 6
+    -
+        name: manufacturer
+        value: Conclusive Engineering
+    -
+        name: country-code
+        value: PL
+#    -
+#        name: vendor
+#        value:
+#    -
+#        name: tlv-diag-version
+#        value:
+#    -
+#        name: service-tag
+#        value:
