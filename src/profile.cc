@@ -22,6 +22,12 @@ Profile::Profile(const std::string &file_name)
 		throw ProfileValueException("Profile file has bad format.");
 	}
 
+    if ((uart = profile_file["devcable-serial"]) == nullptr) {
+        throw ProfileValueException("devcable-serial node is not found in profile file");
+    } else {
+        devcable_serial = profile_file["devcable-serial"].as<std::string>();
+    }
+
     if ((uart = profile_file["uart"]) == nullptr) {
         throw ProfileValueException("UART node in profile file is not found.");
     }
@@ -41,6 +47,11 @@ Profile::Profile(const std::string &file_name)
     if ((eeprom = profile_file["eeprom"]) == nullptr) {
         Logger::warning("EEPROM node in profile file is not found.");
     }
+}
+
+std::string Profile::get_devcable_serial() 
+{
+    return devcable_serial;
 }
 
 std::uint32_t Profile::get_uart_baudrate() 

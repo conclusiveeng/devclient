@@ -55,6 +55,7 @@ class Profile {
 
 public:
   Profile(const std::string &file_name);
+  std::string get_devcable_serial();
   std::uint32_t get_uart_baudrate();
   std::string get_uart_listen_address();
   std::uint32_t get_uart_port();
@@ -71,6 +72,7 @@ private:
    YAML::Node jtag;
    YAML::Node gpio;
    YAML::Node eeprom;
+   std::string devcable_serial;
    std::vector<std::string> gpio_names;
 };
 
