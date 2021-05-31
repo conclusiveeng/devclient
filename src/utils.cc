@@ -46,9 +46,14 @@ std::string macos_executable_dir()
 
 std::string unix_executable_dir()
 {
-	return filesystem::read_symlink("/proc/self/exe")
-		.parent_path()
-		.native();
+	filesystem::path executable_dir;
+
+	executable_dir = filesystem::read_symlink("/proc/self/exe").parent_path();
+
+	if (executable_dir.string().rfind("/opt/", 0) != std::string::npos)
+		executable_dir = executable_dir.parent_path();
+
+	return executable_dir.native();
 }
 
 #else
