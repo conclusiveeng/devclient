@@ -1,4 +1,5 @@
 profile-name: profile-kstr-sama5d27
+devcable-serial: 0407/2020
 uart:
   baudrate: 115200
   listen_address: 127.0.0.1
