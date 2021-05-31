@@ -142,27 +142,27 @@ ProfileTab::clicked()
 			break;
 	}
 	try {
-		m_parent->m_profile_file = new Profile(fname);
+		m_parent->m_pc = new ProfileConfig(fname);
 
 		/* set UART parameters */
-		m_parent->set_uart_addr(m_parent->m_profile_file->get_uart_listen_address());
-		m_parent->set_uart_port(std::to_string(m_parent->m_profile_file->get_uart_port()));
-		m_parent->set_uart_baud(std::to_string(m_parent->m_profile_file->get_uart_baudrate()));
+		m_parent->set_uart_addr(m_parent->m_pc->get_uart_listen_address());
+		m_parent->set_uart_port(std::to_string(m_parent->m_pc->get_uart_port()));
+		m_parent->set_uart_baud(std::to_string(m_parent->m_pc->get_uart_baudrate()));
 
 		/* set JTAG parameters */
-		m_parent->set_jtag_addr(m_parent->m_profile_file->get_jtag_listen_address());
-		m_parent->set_jtag_ocd_port(std::to_string(m_parent->m_profile_file->get_jtag_telnet_port()));
-		m_parent->set_jtag_gdb_port(std::to_string(m_parent->m_profile_file->get_jtag_gdb_port()));
+		m_parent->set_jtag_addr(m_parent->m_pc->get_jtag_listen_address());
+		m_parent->set_jtag_ocd_port(std::to_string(m_parent->m_pc->get_jtag_telnet_port()));
+		m_parent->set_jtag_gdb_port(std::to_string(m_parent->m_pc->get_jtag_gdb_port()));
 
 		for (int i = 0; i < 4; i++) {
-			std::string gpio_name = m_parent->m_profile_file->get_gpio_name(i);
+			std::string gpio_name = m_parent->m_pc->get_gpio_name(i);
 			if (!gpio_name.empty())
 				m_parent->set_gpio_name(i, gpio_name);
 		}
 
-		m_parent->set_jtag_script(m_parent->m_profile_file->get_jtag_script_file());
+		m_parent->set_jtag_script(m_parent->m_pc->get_jtag_script_file());
 	} 
-	catch (const ProfileValueException& error) 
+	catch (const ProfileConfigException& error) 
 	{
 		show_centered_dialog("Error while reading profile file ", error.get_info());
 	}
@@ -769,11 +769,11 @@ EepromTLVTab::load_clicked()
 
 	file_dialog.add_button("Select", Gtk::RESPONSE_OK);
 	file_dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-	if (m_parent->m_profile_file) {
+	if (m_parent->m_pc) {
 		try {
-			file_dialog.set_filename(m_parent->m_profile_file->get_eeprom_file());
+			file_dialog.set_filename(m_parent->m_pc->get_eeprom_file());
 		} 
-		catch (const ProfileValueException& error) 
+		catch (const ProfileConfigException& error) 
 		{
 			Logger::warning("Eeprom file in profile file is not set.");
 		}
