@@ -7,6 +7,9 @@ from yaml.dumper import BaseDumper
 # This tool automaticity generates YAML EEPROM configuration files based
 # on template file with initial EEPROM values.
 # On each generated file mac address is computed and serial number.
+#
+# Example: venv/bin/python3 gen-eeprom-yaml.py -n 100 -f ../kstr-sama5d27-rev3.0.yaml
+
 
 import argparse
 from yaml import load, dump
