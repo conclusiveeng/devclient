@@ -35,6 +35,8 @@ def parse_cli():
                            dest='template_file_name',
                            required=True)
 
+    my_parser.add_argument("-l", "--list", action="store_true")                           
+
     args = my_parser.parse_args()
     arguments = vars(args)
     return arguments
@@ -90,3 +92,5 @@ if __name__ == "__main__":
 
         yaml_out = update_yaml(input_file, eeprom_address, serial_number_text, mac_address_text)
         save_file(f"gen-board-{i}-{serial_number_text}", yaml_out)
+        if args['list']:
+            print(f"{i}: {serial_number_text}")
